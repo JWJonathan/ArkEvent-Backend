@@ -1,0 +1,14 @@
+Django>=6.0.0
+djangorestframework
+PyJWT
+psycopg2-binary
+django-environ
+qrcode
+stripe
+paypalrestsdk
+celery
+redis
+django-cors-headers
+gunicorn
+python-dotenv
+Pillow

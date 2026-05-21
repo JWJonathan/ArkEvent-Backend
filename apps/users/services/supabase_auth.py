@@ -1,23 +1,16 @@
-# apps/users/services/supabase_auth.py
+from apps.users.models import Profile
 
 class SupabaseAuthAdapter:
     """
-    Interface logique vers auth.users (Supabase)
+    Logic for syncing Supabase auth data with local Django profiles.
     """
 
     @staticmethod
-    def get_user(user_id: str):
-        # appel API Supabase ou JWT decode
-        pass
-
-    @staticmethod
     def sync_profile(user_data: dict):
-        from apps.users.models import Profile
-
         profile, created = Profile.objects.update_or_create(
             id=user_data["id"],
             defaults={
-                "username": user_data.get("email"),
+                "username": user_data.get("email", "").split('@')[0] if not user_data.get("username") else user_data.get("username"),
             }
         )
         return profile

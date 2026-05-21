@@ -2,7 +2,8 @@ from django.db import models
 import uuid
 
 class Profile(models.Model):
-    id = models.UUIDField(primary_key=True)  # = auth.users.id (Supabase)
+    # = auth.users.id (Supabase)
+    id = models.UUIDField(primary_key=True, editable=False)
 
     username = models.CharField(max_length=150, unique=True, null=True, blank=True)
     first_name = models.CharField(max_length=100, null=True, blank=True)
@@ -25,8 +26,15 @@ class Profile(models.Model):
     website = models.TextField(null=True, blank=True)
     social_links = models.JSONField(default=dict)
 
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('organizer', 'Organizer'),
+        ('admin', 'Admin'),
+        ('superadmin', 'SuperAdmin'),
+    ]
     role = models.CharField(
         max_length=20,
+        choices=ROLE_CHOICES,
         default="user"
     )
 
@@ -43,3 +51,9 @@ class Profile(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'arkevent"."profiles'
+
+    def __str__(self):
+        return self.username or str(self.id)
