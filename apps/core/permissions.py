@@ -29,15 +29,15 @@ class IsEventOwner(permissions.BasePermission):
 
         # If object is Event
         if hasattr(obj, 'created_by'):
-            if str(obj.created_by.id) == str(request.user.id):
+            if str(obj.created_by_id) == str(request.user.id):
                 return True
 
         # Check if user is admin of the organization that owns the event
         if hasattr(obj, 'organization'):
             return OrganizationMember.objects.filter(
                 organization=obj.organization,
-                profile_id=request.user.id,
-                role='admin'
+                user_id=request.user.id,
+                org_role='admin'
             ).exists()
 
         return False
@@ -48,11 +48,18 @@ class IsOrganizationMember(permissions.BasePermission):
             return False
 
         # If obj is Organization
-        if hasattr(obj, 'members'):
-            return obj.members.filter(id=request.user.id).exists()
+        from apps.organization.models import Organization
+        if isinstance(obj, Organization):
+            return OrganizationMember.objects.filter(
+                organization=obj,
+                user_id=request.user.id
+            ).exists()
 
         # If obj has organization attribute
         if hasattr(obj, 'organization'):
-            return obj.organization.members.filter(id=request.user.id).exists()
+            return OrganizationMember.objects.filter(
+                organization=obj.organization,
+                user_id=request.user.id
+            ).exists()
 
         return False

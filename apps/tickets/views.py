@@ -1,30 +1,32 @@
-from rest_framework import viewsets, status, views
-from rest_framework.decorators import action
+from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from .models import Ticket
-from .serializers import TicketSerializer
-from .services import TicketService
+from .serializers import TicketSerializer, ReservationSerializer
+from .services import ReservationService
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return self.queryset.filter(owner_id=self.request.user.id)
+        return Ticket.objects.filter(owner_id=self.request.user.id)
 
-    @action(detail=True, methods=['get'])
-    def qr(self, request, pk=None):
-        ticket = self.get_object()
-        qr_base64 = TicketService.generate_qr_base64(ticket.token)
-        return Response({'qr_code': qr_base64})
+class ReservationViewSet(viewsets.GenericViewSet):
+    serializer_class = ReservationSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-class CheckInView(views.APIView):
-    def post(self, request):
-        token = request.data.get('token')
-        if not token:
-            return Response({'detail': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        success, message = TicketService.validate_checkin(token)
-        if success:
-            return Response({'message': message})
-        return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            order = ReservationService.reserve_tickets(
+                user_id=request.user.id,
+                event_id=serializer.validated_data['event_id'],
+                items_data=serializer.validated_data['items']
+            )
+            from apps.payments.serializers import OrderSerializer
+            return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

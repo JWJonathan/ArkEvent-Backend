@@ -4,7 +4,7 @@ from .models import Order, OrderItem, Payment
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
-    readonly_fields = ('ticket', 'price_at_purchase', 'created_at')
+    readonly_fields = ('ticket_type', 'quantity', 'price_at_purchase', 'created_at')
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -18,8 +18,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ('order', 'ticket', 'price_at_purchase', 'created_at')
-    raw_id_fields = ('order', 'ticket')
+    list_display = ('order', 'ticket_type', 'quantity', 'price_at_purchase', 'created_at')
+    raw_id_fields = ('order', 'ticket_type')
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):

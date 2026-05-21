@@ -18,7 +18,8 @@ class Order(models.Model):
 class OrderItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items", db_column='order_id')
-    ticket = models.ForeignKey("tickets.Ticket", on_delete=models.CASCADE, db_column='ticket_id')
+    ticket_type = models.ForeignKey("tickets.TicketType", on_delete=models.CASCADE, db_column='ticket_type_id')
+    quantity = models.IntegerField(default=1)
     price_at_purchase = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
 

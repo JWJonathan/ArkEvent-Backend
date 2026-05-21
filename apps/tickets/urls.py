@@ -1,13 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import TicketViewSet, CheckInView
-from apps.payments.views import OrderViewSet
+from .views import TicketViewSet, ReservationViewSet
 
 router = DefaultRouter()
-router.register(r'tickets', TicketViewSet)
+router.register(r'my-tickets', TicketViewSet, basename='my-tickets')
+router.register(r'reserve', ReservationViewSet, basename='reserve')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('generate/', OrderViewSet.as_view({'post': 'create'}), name='ticket-generate'), # Map to order creation
-    path('checkin/validate/', CheckInView.as_view(), name='checkin-validate'),
 ]

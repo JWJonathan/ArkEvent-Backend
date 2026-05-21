@@ -183,6 +183,15 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'release-expired-reservations-every-5-minutes': {
+        'task': 'apps.tickets.tasks.release_expired_reservations',
+        'schedule': crontab(minute='*/5'),
+    },
+}
+
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True  # For development
 

@@ -1,13 +1,13 @@
 from django.db import transaction
-from .models import Order, Payment, OrderItem
-from apps.tickets.services import TicketService
-from apps.core.tasks import send_ticket_confirmation_email
+from .models import Order, Payment
+from apps.tickets.models import Ticket
+from django.utils import timezone
 
 class PaymentService:
     @staticmethod
-    def process_successful_payment(order_id, gateway, transaction_id, provider_response, metadata=None):
+    def process_successful_payment(order_id, provider_name, transaction_id, raw_data):
         with transaction.atomic():
-            # Idempotency check: check if this transaction was already processed
+            # Idempotency check
             if Payment.objects.filter(transaction_id=transaction_id, status='succeeded').exists():
                 return Order.objects.get(id=order_id)
 
@@ -21,25 +21,23 @@ class PaymentService:
                 user_id=order.user_id,
                 amount=order.total_amount,
                 currency=order.currency,
-                gateway=gateway,
                 transaction_id=transaction_id,
                 status='succeeded',
-                provider_response=provider_response,
-                metadata=metadata or {}
+                metadata={
+                    'provider': provider_name,
+                    'raw_data': raw_data
+                }
             )
 
             # Update order status
             order.status = 'paid'
             order.save()
 
-            # Generate tickets
-            for item in order.items.all():
-                for _ in range(item.quantity):
-                    ticket = TicketService.generate_ticket(
-                        ticket_type_id=item.ticket_type.id,
-                        owner_id=order.user_id,
-                        order_id=order.id
-                    )
-                    send_ticket_confirmation_email.delay(ticket.id)
+            # Confirm all reserved tickets for this order
+            tickets = Ticket.objects.filter(order=order, status='reserved')
+            for ticket in tickets:
+                ticket.status = 'confirmed'
+                ticket.reserved_until = None
+                ticket.save()
 
             return order

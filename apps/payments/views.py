@@ -1,101 +1,92 @@
-import json
-import stripe
-from django.conf import settings
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.views import APIView
-from rest_framework import viewsets, status
+from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from .services import PaymentService
+from rest_framework.decorators import action
 from .models import Order
 from .serializers import OrderSerializer
-import paypalrestsdk
+from .providers.stripe import StripeProvider
+from .providers.moncash import MonCashProvider
+from .providers.paypal import PayPalProvider
 
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
+class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return self.queryset.filter(user_id=self.request.user.id)
+        return Order.objects.filter(user_id=self.request.user.id)
 
-    def perform_create(self, serializer):
-        serializer.save(user_id=self.request.user.id)
+    @action(detail=True, methods=['post'])
+    def pay(self, request, pk=None):
+        order = self.get_object()
+        provider_name = request.data.get('provider')
 
-class StripeWebhookView(APIView):
-    permission_classes = [AllowAny]
-
-    @csrf_exempt
-    def post(self, request):
-        payload = request.body
-        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-        event = None
+        if order.status != 'pending':
+            return Response({'error': 'Order is not in pending status'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-            )
-        except ValueError:
-            return HttpResponse(status=400)
-        except stripe.error.SignatureVerificationError:
-            return HttpResponse(status=400)
+            if provider_name == 'stripe':
+                provider = StripeProvider()
+            elif provider_name == 'moncash':
+                provider = MonCashProvider()
+            elif provider_name == 'paypal':
+                provider = PayPalProvider()
+            else:
+                return Response({'error': 'Unsupported payment provider'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if event['type'] == 'checkout.session.completed':
-            session = event['data']['object']
-            order_id = session.get('client_reference_id') or session.get('metadata', {}).get('order_id')
-            if order_id:
+            payment_url = provider.create_payment_session(order)
+            return Response({'payment_url': payment_url})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class WebhookView(viewsets.GenericViewSet):
+    permission_classes = [permissions.AllowAny]
+
+    @action(detail=False, methods=['post'], url_path='stripe')
+    def stripe_webhook(self, request):
+        provider = StripeProvider()
+        event = provider.verify_webhook(request)
+        if event:
+            data = provider.handle_webhook(event)
+            if data:
+                from .services import PaymentService
                 PaymentService.process_successful_payment(
-                    order_id=order_id,
-                    gateway='stripe',
-                    transaction_id=session.get('payment_intent'),
-                    provider_response=event,
-                    metadata=session.get('metadata')
+                    order_id=data['order_id'],
+                    provider_name='stripe',
+                    transaction_id=data['transaction_id'],
+                    raw_data=data['raw_data']
                 )
+                return Response({'status': 'success'})
+        return Response({'status': 'invalid payload'}, status=status.HTTP_400_BAD_REQUEST)
 
-        return HttpResponse(status=200)
-
-class PayPalWebhookView(APIView):
-    permission_classes = [AllowAny]
-
-    @csrf_exempt
-    def post(self, request):
-        paypalrestsdk.configure({
-            "mode": "live" if not settings.DEBUG else "sandbox",
-            "client_id": settings.PAYPAL_CLIENT_ID,
-            "client_secret": settings.PAYPAL_CLIENT_SECRET
-        })
-
-        headers = request.META
-        body = request.body.decode('utf-8')
-
-        is_valid = paypalrestsdk.WebhookEvent.verify(
-            headers.get('HTTP_PAYPAL_TRANSMISSION_ID'),
-            headers.get('HTTP_PAYPAL_TRANSMISSION_TIME'),
-            settings.PAYPAL_WEBHOOK_ID,
-            body,
-            headers.get('HTTP_PAYPAL_CERT_URL'),
-            headers.get('HTTP_PAYPAL_TRANSMISSION_SIG'),
-            headers.get('HTTP_PAYPAL_AUTH_ALGO')
-        )
-
-        if not is_valid:
-            return HttpResponse("Invalid signature", status=400)
-
-        data = json.loads(body)
-        event_type = data.get('event_type')
-
-        if event_type == 'PAYMENT.CAPTURE.COMPLETED':
-            resource = data.get('resource')
-            order_id = resource.get('custom_id')
-
-            if order_id:
+    @action(detail=False, methods=['post'], url_path='paypal')
+    def paypal_webhook(self, request):
+        provider = PayPalProvider()
+        event = provider.verify_webhook(request)
+        if event:
+            data = provider.handle_webhook(event)
+            if data:
+                from .services import PaymentService
                 PaymentService.process_successful_payment(
-                    order_id=order_id,
-                    gateway='paypal',
-                    transaction_id=resource.get('id'),
-                    provider_response=data,
-                    metadata=resource.get('amount')
+                    order_id=data['order_id'],
+                    provider_name='paypal',
+                    transaction_id=data['transaction_id'],
+                    raw_data=data['raw_data']
                 )
+                return Response({'status': 'success'})
+        return Response({'status': 'invalid payload'}, status=status.HTTP_400_BAD_REQUEST)
 
-        return HttpResponse(status=200)
+    @action(detail=False, methods=['post'], url_path='moncash')
+    def moncash_webhook(self, request):
+        provider = MonCashProvider()
+        event = provider.verify_webhook(request)
+        if event:
+            data = provider.handle_webhook(event)
+            if data:
+                from .services import PaymentService
+                PaymentService.process_successful_payment(
+                    order_id=data['order_id'],
+                    provider_name='moncash',
+                    transaction_id=data['transaction_id'],
+                    raw_data=data['raw_data']
+                )
+                return Response({'status': 'success'})
+        return Response({'status': 'invalid payload'}, status=status.HTTP_400_BAD_REQUEST)

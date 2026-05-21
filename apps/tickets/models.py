@@ -22,9 +22,11 @@ class TicketType(models.Model):
 class Ticket(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ticket_type = models.ForeignKey(TicketType, on_delete=models.CASCADE, related_name="tickets", db_column='ticket_type_id')
-    status = models.CharField(max_length=20, default="available")
+    order = models.ForeignKey("payments.Order", on_delete=models.SET_NULL, null=True, blank=True, related_name="tickets", db_column='order_id')
+    status = models.CharField(max_length=20, default="available") # available, reserved, confirmed, used, cancelled
     token = models.TextField(unique=True)
     owner = models.ForeignKey("users.Profile", on_delete=models.SET_NULL, null=True, blank=True, db_column='owner_id')
+    reserved_until = models.DateTimeField(null=True, blank=True)
     checkin_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
