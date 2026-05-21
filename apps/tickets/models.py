@@ -4,17 +4,12 @@ from apps.events.models import Event
 
 class TicketType(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="ticket_types")
-
-    name = models.CharField(max_length=100) # VIP, Standard, etc.
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="ticket_types", db_column='event_id')
+    name = models.TextField()
     description = models.TextField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.IntegerField()
-    sold_count = models.IntegerField(default=0)
-
-    is_active = models.BooleanField(default=True)
-
+    is_visible = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -24,29 +19,15 @@ class TicketType(models.Model):
     def __str__(self):
         return f"{self.event.title} - {self.name}"
 
-
 class Ticket(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    ticket_type = models.ForeignKey(TicketType, on_delete=models.CASCADE, related_name="tickets")
-
-    order = models.ForeignKey("payments.Order", on_delete=models.CASCADE, related_name="tickets", null=True)
-
-    STATUS_CHOICES = [
-        ('valid', 'Valid'),
-        ('used', 'Used'),
-        ('cancelled', 'Cancelled'),
-        ('refunded', 'Refunded'),
-    ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="valid", db_index=True)
-
-    token = models.CharField(max_length=255, unique=True, db_index=True) # Added index
-
-    owner_id = models.UUIDField(db_index=True)  # profile.id
-
-    checked_in_at = models.DateTimeField(null=True, blank=True)
-
+    ticket_type = models.ForeignKey(TicketType, on_delete=models.CASCADE, related_name="tickets", db_column='ticket_type_id')
+    status = models.CharField(max_length=20, default="available")
+    token = models.TextField(unique=True)
+    owner = models.ForeignKey("users.Profile", on_delete=models.SET_NULL, null=True, blank=True, db_column='owner_id')
+    checkin_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'arkevent"."tickets'

@@ -7,6 +7,11 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 
+# === Environnement ===
+ENV = os.getenv("DJANGO_ENV", "development")
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+DOCKER = os.getenv("DOCKER", "False") == "True"
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -69,17 +74,72 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'arkevent_backend.wsgi.application'
+ASGI_APPLICATION = 'arkevent_backend.asgi.application'
 
-# Database
-DATABASES = {
-    'default': env.db('DATABASE_URL', default='sqlite:///db.sqlite3')
-}
+from supabase import create_client, Client
 
-# Use PostgreSQL schema 'arkevent'
-if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
-    DATABASES['default']['OPTIONS'] = {
-        'options': '-c search_path=arkevent,public'
+# ====== Supabase Client Configuration ======
+SUPABASE_URL = os.environ.get('SUPABASE_URL', 'http://supabase-kong:8000')
+SUPABASE_PUBLIC_URL = os.environ.get('SUPABASE_PUBLIC_URL', 'http://localhost:8001')
+SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
+SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET')
+
+# Supabase Storage compatible S3
+SUPABASE_S3_ENDPOINT_URL = 'https://supabase.arkht.com/storage/v1/s3'
+SUPABASE_S3_ACCESS_KEY_ID = os.environ.get('S3_PROTOCOL_ACCESS_KEY_ID')
+SUPABASE_S3_SECRET_ACCESS_KEY = os.environ.get('S3_PROTOCOL_ACCESS_KEY_SECRET')
+SUPABASE_BUCKET_NAME = 'nom-de-votre-bucket'
+SUPABASE_S3_REGION = 'us-east-1'  # ou autre, Supabase l'ignore
+# Optionnel : domaine personnalisé pour les URLs publiques (si configuré)
+SUPABASE_S3_CUSTOM_DOMAIN = None   # ou 'cdn.supabase.arkht.com' si tu as un CDN
+
+# Pour éviter les conflits de noms (chaque upload aura un chemin unique)
+SUPABASE_FILE_OVERWRITE = False
+
+if not DEBUG:
+    # Initialisation du client Supabase (Backend - Admin)
+    supabase_admin: Client = create_client(
+        SUPABASE_URL,
+        SUPABASE_SERVICE_KEY
+    )
+
+    # Client public (pour les opérations non-admin si nécessaire)
+    supabase_public: Client = create_client(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+    )
+
+if DOCKER:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('SUPABASE_DB_NAME', 'agrisen_db'),
+            'USER': os.getenv('SUPABASE_DB_USER', 'agrisen_user'),
+            'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD', ''),
+            'HOST': os.getenv('SUPABASE_DB_HOST', 'supabase-pooler'),
+            'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
+            'CONN_MAX_AGE': 600,
+            'OPTIONS': {
+                'options': '-c search_path=agrisen,public'
+            }
+        }
     }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DATABASE_NAME', 'arkevent'),
+            'USER': os.getenv('DATABASE_USER', 'arkevent_dev'),
+            'PASSWORD': os.getenv('DATABASE_PASSWORD', '1234jonathan'),
+            'HOST': os.getenv('DATABASE_HOST', 'localhost'),
+            'PORT': os.getenv('DATABASE_PORT', '5432'),
+            'CONN_MAX_AGE': 600,
+        }
+    }
+
+print("DOCKER =", DOCKER)
+print("DB HOST =", os.environ.get("SUPABASE_DB_HOST"))
 
 # Supabase Settings
 SUPABASE_URL = env('SUPABASE_URL', default='')
