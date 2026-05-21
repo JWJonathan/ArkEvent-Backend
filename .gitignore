@@ -1,0 +1,32 @@
+# Environnement Virtuelle
+venv/
+# Fichiers de log
+*.log
+# Fichiers de cache
+__pycache__/
+*.pyc
+# Fichiers de configuration locaux
+config.ini
+# Fichiers de données
+data/
+# Fichiers de test
+tests/
+# Fichiers de build
+build/
+dist/
+*.egg-info/
+# Fichiers de distribution
+*.tar.gz
+*.whl
+# Fichiers de documentation
+docs/
+# Fichiers de couverture de code
+.coverage
+# Fichiers de configuration de l'éditeur
+.vscode/
+.idea/
+# Fichiers de système d'exploitation
+.DS_Store
+Thumbs.db   
+# Fichiers de sécurité
+.env    
