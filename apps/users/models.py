@@ -34,3 +34,82 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.username or str(self.id)
+
+
+from django.db import models
+from django.core.validators import MinValueValidator
+from django.conf import settings
+
+class Wallet(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False, unique=True)  # sera géré par la BDD
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wallet',
+        db_column='user_id'
+    )
+    balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0.00)]
+    )
+    currency = models.CharField(max_length=3, default='USD')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'arkevent.wallets'
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(balance__gte=0),
+                name='wallet_balance_non_negative'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} – {self.balance} {self.currency}"
+
+
+class WalletTransaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('deposit', 'Deposit'),
+        ('withdrawal', 'Withdrawal'),
+        ('payment', 'Payment'),
+        ('refund', 'Refund'),
+        ('credit', 'Credit'),
+    ]
+    TRANSACTION_STATUSES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+
+    id = models.UUIDField(primary_key=True, editable=False, unique=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wallet_transactions',
+        db_column='user_id'
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    status = models.CharField(max_length=20, choices=TRANSACTION_STATUSES, default='completed')
+    description = models.CharField(max_length=255, blank=True)
+    order = models.ForeignKey(
+        'payments.Order',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_column='order_id'
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'arkevent.wallet_transactions'
+
+    def __str__(self):
+        return f"{self.type} – {self.amount} ({self.status})"
+    
+    

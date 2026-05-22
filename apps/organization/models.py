@@ -1,39 +1,62 @@
 from django.db import models
+from django.conf import settings
 import uuid
 
 class Organization(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.TextField()
-    slug = models.TextField(unique=True, null=True, blank=True)
-    type = models.TextField(default="company")
-    short_description = models.TextField(null=True, blank=True)
-    description = models.TextField(null=True, blank=True)
-    email = models.TextField(null=True, blank=True)
-    phone = models.TextField(null=True, blank=True)
-    website = models.TextField(null=True, blank=True)
-    city = models.TextField(null=True, blank=True)
-    country = models.TextField(default="HT")
-    logo_url = models.TextField(null=True, blank=True)
+    ORG_TYPES = [
+        ('company', 'Company'),
+        ('association', 'Association'),
+        ('government', 'Government'),
+        ('other', 'Other'),
+    ]
+
+    id = models.UUIDField(primary_key=True, editable=False)
+    name = models.CharField(max_length=255)
+    type = models.CharField(max_length=50, choices=ORG_TYPES, default='other')
+    short_description = models.TextField(blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    phone = models.CharField(max_length=50, blank=True, default='')
+    website = models.URLField(blank=True, default='')
+    logo_url = models.URLField(blank=True, default='')
+    cover_url = models.URLField(blank=True, default='')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='organizations')
     verified = models.BooleanField(default=False)
-    created_by = models.ForeignKey("users.Profile", on_delete=models.CASCADE, related_name="created_organizations", db_column='created_by')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        db_table = 'arkevent"."organizations'
+        db_table = 'arkevent.organizations'
 
     def __str__(self):
         return self.name
 
+
 class OrganizationMember(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_column='organization_id')
-    user = models.ForeignKey("users.Profile", on_delete=models.CASCADE, db_column='user_id')
-    org_role = models.CharField(max_length=50, default="staff")
+    ROLES = [
+        ('owner', 'Owner'),
+        ('admin', 'Admin'),
+        ('organizer', 'Organizer'),
+        ('viewer', 'Viewer'),
+    ]
+    STATUSES = [
+        ('active', 'Active'),
+        ('invited', 'Invited'),
+        ('suspended', 'Suspended'),
+    ]
+
+    id = models.UUIDField(primary_key=True, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    org_role = models.CharField(max_length=50, choices=ROLES, default='viewer')
+    status = models.CharField(max_length=50, choices=STATUSES, default='active')
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='invited_members')
     joined_at = models.DateTimeField(auto_now_add=True)
-    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'arkevent"."organization_members'
-        unique_together = ('organization', 'user')
+        db_table = 'arkevent.organization_members'
+        unique_together = ('organization', 'user')  # un membre par organisation
+
+    def __str__(self):
+        return f"{self.user.email} in {self.organization.name} ({self.org_role})"

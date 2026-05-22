@@ -1,6 +1,6 @@
 from rest_framework import permissions
 from apps.users.models import Profile
-from apps.organization.models import OrganizationMember
+from apps.organization.models import OrganizationMember, Organization
 
 class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -12,15 +12,19 @@ class IsAdmin(permissions.BasePermission):
         except Profile.DoesNotExist:
             return False
 
-class IsOrganizer(permissions.BasePermission):
+class IsOrganizer(BasePermission):
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        # Vérifier que l'utilisateur peut créer un événement pour l'organisation fournie
+        org_id = request.data.get('organization_id')
+        if not org_id:
             return False
-        try:
-            profile = Profile.objects.get(id=request.user.id)
-            return profile.role in ['organizer', 'admin', 'superadmin']
-        except Profile.DoesNotExist:
-            return False
+        return OrganizationMember.objects.filter(
+            organization_id=org_id,
+            user=request.user,
+            org_role__in=['owner', 'admin', 'organizer'],
+            status='active'
+        ).exists()
+
 
 class IsEventOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -62,4 +66,17 @@ class IsOrganizationMember(permissions.BasePermission):
                 user_id=request.user.id
             ).exists()
 
+        return False
+
+from rest_framework.permissions import BasePermission
+
+class IsOrganizationOwnerOrAdmin(BasePermission):
+    """Autorise si l'utilisateur est propriétaire de l'organisation (created_by) ou staff."""
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_staff:
+            return True
+        if isinstance(obj, Organization):
+            return obj.created_by == request.user
+        if isinstance(obj, OrganizationMember):
+            return obj.organization.created_by == request.user
         return False

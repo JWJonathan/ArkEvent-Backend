@@ -2,41 +2,292 @@ from django.db import models
 import uuid
 from apps.organization.models import Organization
 
-class Category(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.TextField()
-    slug = models.TextField(unique=True)
+from django.db import models
+from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
+from django.utils import timezone
+
+class Event(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+        ('cancelled', 'Cancelled'),
+        ('postponed', 'Postponed'),
+        ('completed', 'Completed'),
+    ]
+    VISIBILITY_CHOICES = [
+        ('public', 'Public'),
+        ('private', 'Private'),
+        ('unlisted', 'Unlisted'),
+    ]
+    AGE_CHOICES = [
+        ('all', 'All'),
+        ('parental_guidance', 'Parental Guidance'),
+        ('min_12', '12+'),
+        ('min_16', '16+'),
+        ('min_18', '18+'),
+        ('min_21', '21+'),
+    ]
+    CHECKIN_CHOICES = [
+        ('manual', 'Manual'),
+        ('scan', 'Scan'),
+        ('face', 'Face'),
+        ('code', 'Code'),
+    ]
+
+    id = models.UUIDField(primary_key=True, editable=False)
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, db_column='organization_id')
+    category = models.ForeignKey('events.EventCategory', on_delete=models.SET_NULL, null=True, blank=True, db_column='category_id')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='created_by')
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
+    short_description = models.TextField(blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    highlights = models.TextField(blank=True, default='')
+    tags = ArrayField(models.TextField(), blank=True, default=list)
+    poster_url = models.URLField(blank=True, default='')
+    banner_url = models.URLField(blank=True, default='')
+    thumbnail_url = models.URLField(blank=True, default='')
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True, blank=True)
+    doors_open = models.DateTimeField(null=True, blank=True)
+    timezone = models.CharField(max_length=50, default='America/Port-au-Prince')
+    venue_name = models.CharField(max_length=255, blank=True, default='')
+    venue_address = models.TextField(blank=True, default='')
+    venue_city = models.CharField(max_length=100, blank=True, default='')
+    venue_state = models.CharField(max_length=100, blank=True, default='')
+    venue_country = models.CharField(max_length=2, default='HT')
+    venue_postal_code = models.CharField(max_length=20, blank=True, default='')
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    location_display = models.CharField(max_length=255, blank=True, default='')
+    is_online = models.BooleanField(default=False)
+    online_url = models.URLField(blank=True, default='')
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+    age_limit = models.CharField(max_length=20, choices=AGE_CHOICES, default='all')
+    is_free = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='public')
+    ticket_opens_at = models.DateTimeField(null=True, blank=True)
+    ticket_closes_at = models.DateTimeField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default='HTG')
+    min_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    max_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    marketing_budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    expected_attendance = models.PositiveIntegerField(null=True, blank=True)
+    target_audience = ArrayField(models.TextField(), blank=True, default=list)
+    custom_registration_url = models.URLField(blank=True, default='')
+    meta_title = models.CharField(max_length=255, blank=True, default='')
+    meta_description = models.TextField(blank=True, default='')
+    meta_keywords = ArrayField(models.TextField(), blank=True, default=list)
+    structured_data = models.JSONField(default=dict, blank=True)
+    has_waitlist = models.BooleanField(default=False)
+    waitlist_capacity = models.PositiveIntegerField(null=True, blank=True)
+    allow_transfers = models.BooleanField(default=True)
+    require_approval = models.BooleanField(default=False)
+    checkin_method = models.CharField(max_length=20, choices=CHECKIN_CHOICES, default='scan')
+    event_language = models.CharField(max_length=10, default='fr')
+    accessibility_info = models.TextField(blank=True, default='')
+    sustainability_info = models.TextField(blank=True, default='')
+    metadata = models.JSONField(default=dict, blank=True)
+    settings = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        db_table = 'arkevent"."event_categories'
-        verbose_name_plural = "Categories"
+        db_table = 'arkevent.events'
+
+    def __str__(self):
+        return self.title
+
+class EventCategory(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False)
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
+    description = models.TextField(blank=True, default='')
+    icon = models.CharField(max_length=255, blank=True, default='')
+    image_url = models.URLField(blank=True, default='')
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='children',
+        db_column='parent_id'
+    )
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'arkevent.event_categories'
+        verbose_name_plural = 'Event categories'
 
     def __str__(self):
         return self.name
 
-class Event(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="events", db_column='organization_id')
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, db_column='category_id')
-    created_by = models.ForeignKey("users.Profile", on_delete=models.CASCADE, related_name="created_events", db_column='created_by')
-    title = models.TextField()
-    slug = models.TextField(unique=True)
-    description = models.TextField(null=True, blank=True)
-    poster_url = models.TextField(null=True, blank=True)
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField(null=True, blank=True)
-    timezone = models.TextField(default="America/Port-au-Prince")
-    venue_name = models.TextField(null=True, blank=True)
-    venue_address = models.TextField(null=True, blank=True)
-    capacity = models.IntegerField(null=True, blank=True)
-    status = models.CharField(max_length=30, default="draft")
-    visibility = models.CharField(max_length=30, default="public")
-    currency = models.TextField(default="HTG")
+
+from django.contrib.postgres.fields import JSONField
+
+class EventSession(models.Model):
+    SESSION_TYPE_CHOICES = [
+        ('talk', 'Talk'),
+        ('workshop', 'Workshop'),
+        ('performance', 'Performance'),
+        ('panel', 'Panel'),
+        ('break', 'Break'),
+        ('networking', 'Networking'),
+        ('other', 'Other'),
+    ]
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='sessions')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    session_type = models.CharField(max_length=20, choices=SESSION_TYPE_CHOICES, null=True, blank=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    location = models.CharField(max_length=255, blank=True, default='')
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+    speakers = models.JSONField(default=list, blank=True)   # liste d'objets (jsonb)
+    image_url = models.URLField(blank=True, default='')
+    recording_url = models.URLField(blank=True, default='')
+    requires_ticket = models.BooleanField(default=False)
+    ticket_type = models.ForeignKey('tickets.TicketType', null=True, blank=True, on_delete=models.SET_NULL, db_column='ticket_type_id')
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'arkevent.event_sessions'
+
+    def __str__(self):
+        return f"{self.title} ({self.event.title})"
+
+
+class EventSpeaker(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='speakers')
+    profile = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='profile_id')
+    full_name = models.CharField(max_length=255)
+    role = models.CharField(max_length=255, blank=True, default='')
+    bio = models.TextField(blank=True, default='')
+    photo_url = models.URLField(blank=True, default='')
+    social_links = models.JSONField(default=dict, blank=True)
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'arkevent.event_speakers'
+
+    def __str__(self):
+        return self.full_name
+
+
+class EventOrganizer(models.Model):
+    ROLE_CHOICES = [
+        ('manager', 'Manager'),
+        ('viewer', 'Viewer'),
+        ('controller', 'Controller'),
+    ]
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='organizers')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='manager')
+    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='added_by', related_name='added_organizers')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'arkevent.event_organizers'
+        unique_together = ('event', 'user')
+
+    def __str__(self):
+        return f"{self.user.email} - {self.role} ({self.event.title})"
+
+
+class EventMedia(models.Model):
+    MEDIA_TYPE_CHOICES = [
+        ('image', 'Image'),
+        ('video', 'Video'),
+        ('document', 'Document'),
+    ]
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='media')
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='uploaded_by')
+    media_type = models.CharField(max_length=20, choices=MEDIA_TYPE_CHOICES)
+    url = models.URLField()
+    alt_text = models.CharField(max_length=255, blank=True, default='')
+    title = models.CharField(max_length=255, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    sort_order = models.IntegerField(default=0)
+    is_featured = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'arkevent.event_media'
+
+    def __str__(self):
+        return f"{self.media_type}: {self.title or self.url}"
+
+
+class EventSponsor(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='sponsors')
+    name = models.CharField(max_length=255)
+    logo_url = models.URLField(blank=True, default='')
+    website = models.URLField(blank=True, default='')
+    level = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'arkevent.event_sponsors'
+
+    def __str__(self):
+        return self.name
+
+class EventFaq(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='faqs')
+    question = models.TextField()
+    answer = models.TextField()
+    sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'arkevent"."events'
+        db_table = 'arkevent.event_faq'
 
     def __str__(self):
-        return self.title
+        return self.question
+
+
+class Announcement(models.Model):
+    URGENCY_CHOICES = [
+        ('low', 'Low'),
+        ('normal', 'Normal'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='announcements')
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='sender_id')
+    title = models.CharField(max_length=255, blank=True, default='')
+    message = models.TextField()
+    urgency = models.CharField(max_length=20, choices=URGENCY_CHOICES, default='normal')
+    is_push = models.BooleanField(default=True)
+    sent_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'arkevent.announcements'
+
+    def __str__(self):
+        return self.title or self.message[:50]
+
