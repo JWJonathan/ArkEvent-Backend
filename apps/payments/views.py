@@ -1,10 +1,10 @@
-from rest_framework import viewsets, permissions, status, filters
+from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Order, Payment, OrderItem
 from django.db import transaction
 from django.utils import timezone
-from .serializers import OrderSerializer, PaymentSerializer
+from .serializers import OrderSerializer, PaymentSerializer, OrderItemSerializer
 from .services import PaymentService
 from .providers.stripe import StripeProvider
 from .providers.moncash import MonCashProvider
@@ -13,6 +13,8 @@ from apps.core.permissions import IsAdmin
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
+from apps.users.models import Wallet  # à adapter selon votre structure d'apps
+from apps.tickets.models import Ticket  # à adapter selon votre structure d'apps
 
 class OrderViewSet(viewsets.ModelViewSet):
     """
@@ -46,12 +48,19 @@ class OrderViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
 
+        if user.is_staff:
+            return qs
+
         # Filtrage par utilisateur connecté si pas admin
         if not user.is_staff:
             qs = qs.filter(user=user)
-
-        # Filtre optionnel par statut
-        status_param = self.request.query_params.get('status')
+        event_id = self.request.query_params.get('event_id')
+        if event_id:
+            # Vérifier que l'utilisateur est organisateur de l'événement
+            if EventOrganizer.objects.filter(event_id=event_id, user=user).exists():
+                qs = Order.objects.filter(event_id=event_id)
+            # Filtre optionnel par statut
+            status_param = self.request.query_params.get('status')
         if status_param:
             qs = qs.filter(status=status_param)
 
@@ -64,8 +73,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'], url_path='all')
-    @permission_classes([IsAdmin])
+    @action(detail=False, methods=['get'], url_path='all', permission_classes=[IsAdmin])
     def all_orders(self, request):
         """Équivalent de getAllOrders() - admin uniquement"""
         qs = Order.objects.filter(deleted_at__isnull=True)
@@ -245,6 +253,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
         Possibilité de filtrer par statut, méthode de paiement, etc.
         """
         qs = super().get_queryset()
+        if not self.request.user.is_staff:
+            qs = qs.filter(user=self.request.user)
         status_param = self.request.query_params.get('status')
         if status_param:
             qs = qs.filter(status=status_param)
@@ -317,8 +327,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-    @action(detail=False, methods=['post'], url_path='create-session')
-    @permission_classes([IsAuthenticated])
+    @action(detail=False, methods=['post'], url_path='create-session', permission_classes=[IsAuthenticated])
     def create_payment_session(self, request):
         """
         Remplace startCheckout() du Flutter.

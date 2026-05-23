@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Announcement, Event, EventCategory, EventSession, EventSpeaker, EventOrganizer, EventMedia, EventSponsor, EventFaq
+from .models import Announcement, Event, EventCategory, EventSession, EventSpeaker, EventOrganizer, EventMedia, EventSponsor, EventFaq, EventShare
 from apps.organization.models import Organization
 
 from rest_framework import serializers
@@ -136,3 +136,11 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             'title', 'message', 'urgency', 'is_push', 'sent_at', 'expires_at', 'created_at'
         ]
         read_only_fields = ['id', 'sent_at', 'created_at']
+
+class EventShareSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventShare
+        fields = ['id', 'event_id', 'user_id', 'platform', 'recipient', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+

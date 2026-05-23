@@ -1,16 +1,18 @@
+from django.conf import settings
 from django.db import models
 import uuid
 from apps.events.models import Event
 
 class Order(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey("users.Profile", on_delete=models.CASCADE, related_name="orders", db_column='user_id')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders", db_column='user_id')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="orders", db_column='event_id')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.TextField(default="HTG")
     status = models.CharField(max_length=20, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'arkevent"."orders'
@@ -29,7 +31,7 @@ class OrderItem(models.Model):
 class Payment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payments", db_column='order_id')
-    user = models.ForeignKey("users.Profile", on_delete=models.CASCADE, related_name="payments", db_column='user_id')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payments", db_column='user_id')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.TextField(default="HTG")
     transaction_id = models.TextField(unique=True, null=True, blank=True)

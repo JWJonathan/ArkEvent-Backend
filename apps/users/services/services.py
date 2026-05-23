@@ -1,5 +1,5 @@
 from django.db import transaction
-from .models import Wallet, WalletTransaction
+from ..models import Wallet, WalletTransaction
 
 class WalletService:
 

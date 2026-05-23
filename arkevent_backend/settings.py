@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
 
     # Third party apps
     'rest_framework',
@@ -44,6 +45,11 @@ INSTALLED_APPS = [
     'apps.tickets',
     'apps.payments',
     'apps.notifications',
+    'apps.marketing',
+    'apps.registrations',
+    'apps.networking',
+    'apps.surveys',
+    'apps.analytics',
 ]
 
 MIDDLEWARE = [
@@ -58,6 +64,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'arkevent_backend.urls'
+
+AUTH_USER_MODEL = 'users.User'
 
 TEMPLATES = [
     {
@@ -122,7 +130,7 @@ if DOCKER:
             'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
             'CONN_MAX_AGE': 600,
             'OPTIONS': {
-                'options': '-c search_path=agrisen,public'
+                'options': '-c search_path=arkevent,public'
             }
         }
     }
@@ -131,11 +139,14 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('DATABASE_NAME', 'arkevent'),
-            'USER': os.getenv('DATABASE_USER', 'arkevent_dev'),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', '1234jonathan'),
+            'USER': os.getenv('DATABASE_USER', 'jwj'),
+            'PASSWORD': os.getenv('DATABASE_PASSWORD', 'V@ultX9!r#7FpZ2m'),
             'HOST': os.getenv('DATABASE_HOST', 'localhost'),
             'PORT': os.getenv('DATABASE_PORT', '5432'),
             'CONN_MAX_AGE': 600,
+            'OPTIONS': {
+                'options': '-c search_path=arkevent,public'
+            }
         }
     }
 
@@ -152,10 +163,14 @@ PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID', default='')
 PAYPAL_CLIENT_SECRET = env('PAYPAL_CLIENT_SECRET', default='')
 PAYPAL_WEBHOOK_ID = env('PAYPAL_WEBHOOK_ID', default='')
 
-# REST Framework
+
+INSTALLED_APPS += [
+    'rest_framework_simplejwt',
+] 
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'apps.core.auth.SupabaseJWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # ← JWT standard
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -174,6 +189,24 @@ REST_FRAMEWORK = {
         'anon': '100/day',
         'user': '1000/day'
     }
+}
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,  # ← sécurité renforcée
+    'BLACKLIST_AFTER_ROTATION': True,  # ← empêche la réutilisation
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'JTI_CLAIM': 'jti',
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
 }
 
 # Celery

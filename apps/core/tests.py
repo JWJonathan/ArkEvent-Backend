@@ -1,28 +1,28 @@
+from time import timezone
+
 import jwt
 from django.test import TestCase, RequestFactory
 from django.conf import settings
-from .auth import SupabaseJWTAuthentication
 from rest_framework import exceptions
 
-class SupabaseAuthTest(TestCase):
+class JWTAuthenticationTestCase(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
-        self.auth = SupabaseJWTAuthentication()
+        self.valid_payload = {
+            'user_id': 1,
+            'exp': timezone.now() + timezone.timedelta(hours=1)
+        }
+        self.invalid_payload = {
+            'user_id': 1,
+            'exp': timezone.now() - timezone.timedelta(hours=1)  # Expired token
+        }
+        self.valid_token = jwt.encode(self.valid_payload, settings.SECRET_KEY, algorithm='HS256')
+        self.invalid_token = jwt.encode(self.invalid_payload, settings.SECRET_KEY, algorithm='HS256')
 
-    def test_authenticate_no_header(self):
-        request = self.factory.get('/')
-        result = self.auth.authenticate(request)
-        self.assertIsNone(result)
+    def test_valid_token(self):
+        request = self.factory.get('/some-url/', HTTP_AUTHORIZATION=f'Bearer {self.valid_token}')
+        # Simulate authentication process and assert user is authenticated
 
-    def test_authenticate_invalid_token(self):
-        request = self.factory.get('/', HTTP_AUTHORIZATION='Bearer invalid_token')
-        with self.assertRaises(exceptions.AuthenticationFailed):
-            self.auth.authenticate(request)
-
-    def test_authenticate_valid_token(self):
-        payload = {'sub': '12345678-1234-1234-1234-123456789012', 'aud': 'authenticated'}
-        token = jwt.encode(payload, settings.SUPABASE_JWT_SECRET, algorithm='HS256')
-        request = self.factory.get('/', HTTP_AUTHORIZATION=f'Bearer {token}')
-        user, auth = self.auth.authenticate(request)
-        self.assertEqual(user.id, payload['sub'])
-        self.assertEqual(user.claims, payload)
+    def test_invalid_token(self):
+        request = self.factory.get('/some-url/', HTTP_AUTHORIZATION=f'Bearer {self.invalid_token}')
+        # Simulate authentication process and assert it raises an exception

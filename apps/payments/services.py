@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 from .models import Order, Payment
 from apps.tickets.models import Ticket
-from apps.wallets.models import Wallet, WalletTransaction  # à adapter si vos apps sont différentes
+from apps.users.models import Wallet, WalletTransaction
 
 
 class PaymentService:

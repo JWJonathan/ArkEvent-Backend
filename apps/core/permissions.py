@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from apps.users.models import Profile
+from apps.users.models import User
 from apps.organization.models import OrganizationMember, Organization
 
 class IsAdmin(permissions.BasePermission):
@@ -7,12 +7,12 @@ class IsAdmin(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         try:
-            profile = Profile.objects.get(id=request.user.id)
-            return profile.role in ['admin', 'superadmin']
-        except Profile.DoesNotExist:
+            user = User.objects.get(id=request.user.id)
+            return user.role in ['admin', 'superadmin'] and user.is_staff
+        except User.DoesNotExist:
             return False
 
-class IsOrganizer(BasePermission):
+class IsOrganizer(permissions.BasePermission):
     def has_permission(self, request, view):
         # Vérifier que l'utilisateur peut créer un événement pour l'organisation fournie
         org_id = request.data.get('organization_id')
@@ -30,6 +30,9 @@ class IsEventOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:
             return False
+        
+        if request.user.is_staff:
+            return True
 
         # If object is Event
         if hasattr(obj, 'created_by'):
@@ -80,3 +83,26 @@ class IsOrganizationOwnerOrAdmin(BasePermission):
         if isinstance(obj, OrganizationMember):
             return obj.organization.created_by == request.user
         return False
+
+class CanManageEvent(BasePermission):
+    """
+    Autorise si l'utilisateur est admin, propriétaire de l'organisation,
+    ou organisateur (manager/controller) de l'événement.
+    """
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.is_staff:
+            return True
+        # obj est un événement
+        if hasattr(obj, 'organization'):
+            if obj.organization.created_by == user:
+                return True
+        # Vérifier si l'utilisateur est organisateur de l'événement
+        from events.models import EventOrganizer
+        return EventOrganizer.objects.filter(
+            event_id=obj.id,
+            user=user,
+            role__in=['manager', 'controller']
+        ).exists()
+    
+    

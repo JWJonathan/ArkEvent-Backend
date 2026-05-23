@@ -38,3 +38,13 @@ class PushTokenSerializer(serializers.ModelSerializer):
             'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+from .models import UserDevice
+
+class UserDeviceSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source='user.profile.full_name')
+
+    class Meta:
+        model = UserDevice
+        fields = ['id', 'user_id', 'user_name', 'device_id', 'device_name', 'os', 'app_version', 'last_seen', 'created_at']
+        read_only_fields = ['id', 'created_at', 'last_seen']

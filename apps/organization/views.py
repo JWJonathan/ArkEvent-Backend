@@ -1,6 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from apps.users.views import User
 from .models import Organization, OrganizationMember
 from .serializers import OrganizationSerializer, OrganizationMemberSerializer
 from .services import OrganizationService, MemberService
@@ -21,6 +23,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
     def get_queryset(self):
+        if self.action == 'list' and not self.request.user.is_staff:
+            # RLS : tout le monde peut voir les organisations non supprimées
+            return Organization.objects.filter(deleted_at__isnull=True)
         user = self.request.user
         # Si l'utilisateur est admin, il peut voir toutes les organisations.
         if user.is_staff:
@@ -89,6 +94,18 @@ class OrganizationMemberViewSet(viewsets.ViewSet):
         if self.action == 'list_all':
             return [permissions.IsAuthenticated(), IsAdmin()]
         return super().get_permissions()
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return OrganizationMember.objects.all()
+        org_id = self.request.query_params.get('organization_id')
+        if org_id:
+            # Vérifier si l'utilisateur est admin de l'organisation
+            if OrganizationMember.objects.filter(organization_id=org_id, user=user, org_role='owner').exists():
+                return OrganizationMember.objects.filter(organization_id=org_id)
+        # Sinon, ne montrer que les appartenances de l'utilisateur
+        return OrganizationMember.objects.filter(user=user)
 
     # ── POST /org-members/add/ → addMember(orgId, userId, role, status) ──
     @action(detail=False, methods=['post'], url_path='add')
@@ -106,7 +123,7 @@ class OrganizationMemberViewSet(viewsets.ViewSet):
             return Response({'error': 'Organisation introuvable'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            user = get_user_model().objects.get(id=user_id)
+            user = User.objects.get(id=user_id)
         except:
             return Response({'error': 'Utilisateur introuvable'}, status=status.HTTP_404_NOT_FOUND)
 

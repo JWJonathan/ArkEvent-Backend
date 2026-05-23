@@ -30,3 +30,5 @@ def release_expired_reservations():
 def send_ticket_confirmation_email(ticket_id):
     # Mock implementation for now as requested
     pass
+
+

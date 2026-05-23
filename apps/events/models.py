@@ -36,7 +36,7 @@ class Event(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, editable=False)
-    organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, db_column='organization_id')
+    organization = models.ForeignKey('organization.Organization', on_delete=models.CASCADE, db_column='organization_id')
     category = models.ForeignKey('events.EventCategory', on_delete=models.SET_NULL, null=True, blank=True, db_column='category_id')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='created_by')
     title = models.CharField(max_length=255)
@@ -101,6 +101,13 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def delete(self, using=None, keep_parents=False):
+        if self.status in ['published', 'completed']:
+            self.deleted_at = timezone.now()
+            self.save(update_fields=['deleted_at'])
+        else:
+            super().delete(using=using, keep_parents=keep_parents)
 
 class EventCategory(models.Model):
     id = models.UUIDField(primary_key=True, editable=False)
@@ -291,3 +298,16 @@ class Announcement(models.Model):
     def __str__(self):
         return self.title or self.message[:50]
 
+class EventShare(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='shares')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, db_column='user_id')
+    platform = models.CharField(max_length=50)  # ex: 'facebook', 'twitter', 'whatsapp'
+    recipient = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'arkevent.event_shares'
+
+    def __str__(self):
+        return f"{self.platform} - {self.event.title}"

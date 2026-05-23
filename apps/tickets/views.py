@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 from .models import TicketType, Ticket, TicketHold, TicketTransfer
@@ -8,7 +9,7 @@ from .serializers import (
     TicketTypeSerializer, TicketSerializer,
     TicketHoldSerializer, TicketTransferSerializer
 )
-from apps.core.permissions import IsAdmin, IsOrganizer, IsTicketOwner
+from apps.core.permissions import IsAdmin, IsOrganizer
 from .services import TicketService
 
 
@@ -28,6 +29,13 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+        if user.is_staff:
+            return qs
+        return qs.filter(
+            Q(event__visibility='public', event__status='published') |
+            Q(event__organizers__user=user)
+        ).distinct()
         event_id = self.request.query_params.get('event_id')
         if event_id:
             qs = qs.filter(event_id=event_id)
@@ -37,18 +45,18 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
         # Vérifier que l'utilisateur est organisateur de l'événement
         event = serializer.validated_data['event']
         if event.organization.created_by != self.request.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied("Vous ne pouvez pas créer de type de billet pour cet événement.")
+            raise PermissionDenied("Vous ne pouvez pas créer de type de billet pour cet événement.")
         serializer.save()
 
     def perform_update(self, serializer):
         instance = self.get_object()
         if instance.event.organization.created_by != self.request.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied()
+            raise PermissionDenied()
         serializer.save(updated_at=timezone.now())
 
     def perform_destroy(self, instance):
         if instance.event.organization.created_by != self.request.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied()
+            raise PermissionDenied()
         instance.deleted_at = timezone.now()
         instance.save()
 
@@ -71,6 +79,14 @@ class TicketViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
+
+        if user.is_staff:
+            return qs
+        
+        return qs.filter(
+            Q(owner=user) |
+            Q(ticket_type__event__organizers__user=user)
+        ).distinct()
 
         # Filtres optionnels
         status_param = self.request.query_params.get('status')
@@ -100,20 +116,20 @@ class TicketViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Réservé aux organisateurs / admins (création manuelle de tickets)
         if not self.request.user.is_staff:
-            raise permissions.PermissionDenied()
+            raise PermissionDenied()
         serializer.save()
 
     def perform_update(self, serializer):
         instance = self.get_object()
         # Vérifier que l'utilisateur est propriétaire ou organisateur de l'événement
         if instance.owner != self.request.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied()
+            raise PermissionDenied()
         serializer.save(updated_at=timezone.now())
 
     def perform_destroy(self, instance):
         # Soft delete : annule le billet (même logique que deleteTicket Flutter)
         if instance.owner != self.request.user and not self.request.user.is_staff:
-            raise permissions.PermissionDenied()
+            raise PermissionDenied()
         instance.status = 'cancelled'
         instance.updated_at = timezone.now()
         instance.save()

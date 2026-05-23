@@ -2,8 +2,8 @@ from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from .models import Event
-from .serializers import EventSerializer
+from .models import Event, EventCategory, EventSession, EventSpeaker, EventOrganizer, EventMedia, EventSponsor, EventFaq, Announcement, EventShare
+from .serializers import EventSerializer, EventCategorySerializer, EventSessionSerializer, EventSpeakerSerializer, EventOrganizerSerializer, EventMediaSerializer, EventSponsorSerializer, EventFaqSerializer, AnnouncementSerializer, EventShareSerializer
 from apps.core.permissions import IsAdmin, IsOrganizer, IsEventOwner
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -28,6 +28,10 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
 
+        user = self.request.user
+        if user.is_staff:
+            return qs
+
         # Filtres par query params (correspondant à getAllEvents)
         category_id = self.request.query_params.get('category_id')
         if category_id:
@@ -44,6 +48,13 @@ class EventViewSet(viewsets.ModelViewSet):
         slug = self.request.query_params.get('slug')
         if slug:
             qs = qs.filter(slug=slug)
+
+        # Pour les non‑staff : événements publics publiés + événements où l'utilisateur est organisateur
+        from django.db.models import Q
+        return qs.filter(
+            Q(visibility='public', status='published') |
+            Q(organizers__user=user)
+        ).distinct()
 
         return qs
 
@@ -107,6 +118,12 @@ class EventCategoryViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated(), IsAdmin()]
         return [permissions.AllowAny()]
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self.request.user.is_staff:
+            qs = qs.filter(is_active=True)
+        return qs
 
     def perform_create(self, serializer):
         # L'ID est généré automatiquement par la base de données (uuid_generate_v4)
@@ -130,8 +147,19 @@ from .serializers import (
 )
 from django.utils import timezone
 
+class EventRelatedMixin:
+    def filter_queryset_by_event_access(self, qs):
+        user = self.request.user
+        if user.is_staff:
+            return qs
+        from django.db.models import Q
+        return qs.filter(
+            Q(event__visibility='public', event__status='published') |
+            Q(event__organizers__user=user)
+        ).distinct()
+
 # ──────────────────── SESSIONS ────────────────────
-class EventSessionViewSet(viewsets.ModelViewSet):
+class EventSessionViewSet(viewsets.ModelViewSet, EventRelatedMixin):
     queryset = EventSession.objects.filter(deleted_at__isnull=True).order_by('-start_time')
     serializer_class = EventSessionSerializer
 
@@ -139,6 +167,10 @@ class EventSessionViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated()]  # ajoutez IsEventOwner plus tard si nécessaire
         return [permissions.AllowAny()]
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return self.filter_queryset_by_event_access(qs)
 
     def perform_create(self, serializer):
         # Le champ event_id doit être passé dans le payload
@@ -253,3 +285,15 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save()
+
+class EventShareViewSet(viewsets.ModelViewSet):
+    queryset = EventShare.objects.all().order_by('-created_at')
+    serializer_class = EventShareSerializer
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticated()]  # seuls les admins peuvent lister (à ajuster)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

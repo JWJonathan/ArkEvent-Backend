@@ -129,3 +129,24 @@ class PushTokenViewSet(viewsets.ModelViewSet):
         if instance.user != self.request.user and not self.request.user.is_staff:
             raise PermissionDenied()
         instance.delete()
+
+from .models import UserDevice
+from .serializers import UserDeviceSerializer
+
+class UserDeviceViewSet(viewsets.ModelViewSet):
+    queryset = UserDevice.objects.all().order_by('-last_seen')
+    serializer_class = UserDeviceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return UserDevice.objects.all().order_by('-last_seen')
+        return UserDevice.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.user != self.request.user and not self.request.user.is_staff:
+            raise PermissionDenied()
+        instance.delete()
