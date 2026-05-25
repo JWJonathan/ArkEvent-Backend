@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from .models import TicketType, Ticket, TicketHold, TicketTransfer
 from .serializers import (
@@ -72,7 +73,7 @@ class TicketViewSet(viewsets.ModelViewSet):
     - deleteTicket()
     - validateTicket()
     """
-    queryset = Ticket.objects.all()
+    queryset = Ticket.objects.all().order_by('-created_at')
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -101,7 +102,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         if not user.is_staff:
             qs = qs.filter(owner=user)
         return qs
-
+    
     @action(detail=False, methods=['get'], url_path='mine')
     def my_tickets(self, request):
         """Équivalent de getMyTickets(userId)"""
@@ -112,6 +113,12 @@ class TicketViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='count')
+    def my_tickets_count(self, request):
+        """Équivalent de getMyTicketsCount()"""
+        count = self.get_queryset().filter(owner=request.user).count()
+        return Response({'count': count})
 
     def perform_create(self, serializer):
         # Réservé aux organisateurs / admins (création manuelle de tickets)

@@ -238,7 +238,7 @@ class WishlistViewSet(viewsets.ModelViewSet):
     def wishlist_events(self, request):
         wishlist_entries = Wishlist.objects.filter(user=request.user).select_related('event')
         events = [entry.event for entry in wishlist_entries if entry.event.deleted_at is None]
-        from events.serializers import EventSerializer
+        from apps.events.serializers import EventSerializer
         serializer = EventSerializer(events, many=True)
         return Response(serializer.data)
 

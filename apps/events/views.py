@@ -7,7 +7,7 @@ from .serializers import EventSerializer, EventCategorySerializer, EventSessionS
 from apps.core.permissions import IsAdmin, IsOrganizer, IsEventOwner
 
 class EventViewSet(viewsets.ModelViewSet):
-    queryset = Event.objects.filter(deleted_at__isnull=True)
+    queryset = Event.objects.filter(deleted_at__isnull=True).order_by('-created_at')
     serializer_class = EventSerializer
     lookup_field = 'id'  # on utilise l'ID, mais on peut aussi chercher par slug avec une action
 

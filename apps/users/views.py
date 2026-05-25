@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -269,3 +269,35 @@ class PasswordResetTokenViewSet(mixins.ListModelMixin,
     queryset = PasswordResetToken.objects.all().order_by('-created_at')
     serializer_class = PasswordResetTokenSerializer
     permission_classes = [IsAdmin]
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('-created_at')
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['email', 'full_name', 'phone']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        role = self.request.query_params.get('role')
+        if role:
+            qs = qs.filter(role=role)
+        return qs
+
+    @action(detail=True, methods=['patch'], url_path='role')
+    def update_role(self, request, pk=None):
+        user = self.get_object()
+        new_role = request.data.get('role')
+        if new_role not in [r[0] for r in User.ROLE_CHOICES]:
+            return Response({'error': 'Rôle invalide'}, status=status.HTTP_400_BAD_REQUEST)
+        user.role = new_role
+        user.save(update_fields=['role', 'updated_at'])
+        return Response({'status': 'Rôle mis à jour'})
+
+    @action(detail=True, methods=['post'], url_path='ban')
+    def toggle_ban(self, request, pk=None):
+        user = self.get_object()
+        is_banned = request.data.get('is_banned', False)
+        user.is_active = not is_banned
+        user.save(update_fields=['is_active', 'updated_at'])
+        return Response({'status': 'Ban mis à jour'})

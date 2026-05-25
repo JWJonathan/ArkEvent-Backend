@@ -4,10 +4,11 @@ from .views import TicketTypeViewSet, TicketViewSet, TicketHoldViewSet, TicketTr
 
 router = DefaultRouter()
 router.register(r'ticket-types', TicketTypeViewSet)
-router.register(r'tickets', TicketViewSet)
 router.register(r'ticket-holds', TicketHoldViewSet)
 router.register(r'ticket-transfers', TicketTransferViewSet)
+router.register(r'', TicketViewSet)
 
 urlpatterns = [
+    path('mine/count/', TicketViewSet.as_view({'get': 'my_tickets_count'}), name='my-tickets-count'),
     path('', include(router.urls)),
 ]

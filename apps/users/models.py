@@ -42,7 +42,13 @@ class User(AbstractUser):
         ('admin', 'Admin'),
         ('superadmin', 'Super Admin'),
     ]
-    
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+        ('prefer_not_to_say', 'Prefer not to say')
+    ]
+
     id = models.UUIDField(primary_key=True, editable=False, unique=True)
     email = models.EmailField(unique=True, blank=False)
     username = models.CharField(max_length=150, blank=True, null=True, unique=True)
@@ -54,7 +60,7 @@ class User(AbstractUser):
     phone = models.CharField(max_length=50, blank=True, default='')
     phone_verified = models.BooleanField(default=False)
     date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(max_length=20, blank=True, default='')
+    gender = models.CharField(max_length=20, choices=GENDER_CHOICES, blank=True, default='')
     location = models.CharField(max_length=255, blank=True, default='')
     user_timezone = models.CharField(max_length=50, blank=True, default='UTC')
     language = models.CharField(max_length=10, blank=True, default='fr')
@@ -104,7 +110,7 @@ from django.core.validators import MinValueValidator
 from django.conf import settings
 
 class Wallet(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False, unique=True)  # sera géré par la BDD
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

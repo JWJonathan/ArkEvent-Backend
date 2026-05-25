@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Order, Payment, OrderItem
-from django.db import transaction
+from django.db import transaction, models
 from django.utils import timezone
 from .serializers import OrderSerializer, PaymentSerializer, OrderItemSerializer
 from .services import PaymentService
@@ -367,3 +367,22 @@ class PaymentViewSet(viewsets.ModelViewSet):
             })
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
+    @action(detail=False, methods=['get'], url_path='mine')
+    def my_payments(self, request):
+        """Équivalent de getMyPayments()"""
+        qs = self.get_queryset().filter(user=request.user)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='total-spent')
+    def total_spent(self, request):
+        """Équivalent de getTotalSpent()"""
+        total = self.get_queryset().filter(user=request.user, status='succeeded').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0.00
+        return Response({'total_spent': float(total)})
