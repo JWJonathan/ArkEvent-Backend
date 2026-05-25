@@ -29,6 +29,11 @@ class EventViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
 
         user = self.request.user
+
+        # Si l'utilisateur n'est pas authentifié, ne montrer que les événements publics publiés
+        if not user.is_authenticated:
+            return qs.filter(visibility='public', status='published')
+        
         if user.is_staff:
             return qs
 
