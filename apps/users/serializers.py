@@ -55,7 +55,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name', 'full_name',
             'phone', 'phone_verified', 'date_of_birth', 'gender', 'location',
-            'user_timezone', 'language', 'avatar_url', 'cover_url', 'bio', 'website',
+            'user_timezone', 'language', 'avatar', 'cover', 'bio', 'website',
             'social_links', 'role', 'is_verified', 'is_public', 'notification_preferences',
             'settings', 'referral_code', 'referred_by', 'affiliate_id',
             'last_login_at', 'accepted_terms_at', 'created_at', 'updated_at'

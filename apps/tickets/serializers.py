@@ -8,37 +8,26 @@ class TicketTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketType
         fields = [
-            'id', 'event_id', 'event_title', 'name', 'description',
-            'price', 'quantity', 'available_from', 'available_to',
-            'tier_name', 'max_per_order', 'is_donation', 'is_free',
-            'is_visible', 'color', 'sort_order', 'requires_approval',
-            'brings_plus_one', 'sales_channel', 'hidden_until',
-            'min_age', 'max_age', 'restrictions', 'created_at', 'updated_at'
+            'id', 'event', 'event_id', 'event_title', 'name', 'description',
+            'price', 'quantity', 'is_visible', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'event_title', 'created_at', 'updated_at']
+        extra_kwargs = {'event': {'required': False}}
 
 
 class TicketSerializer(serializers.ModelSerializer):
     ticket_type_name = serializers.ReadOnlyField(source='ticket_type.name')
     event_title = serializers.ReadOnlyField(source='ticket_type.event.title')
-    event_date = serializers.ReadOnlyField(source='ticket_type.event.start_date')
     owner_name = serializers.ReadOnlyField(source='owner.profile.full_name')
-    qr_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Ticket
         fields = [
             'id', 'ticket_type_id', 'ticket_type_name', 'event_title',
-            'event_date', 'status', 'token', 'qr_code', 'owner_id',
-            'owner_name', 'reserved_until', 'held_by', 'seat_label',
-            'checkin_at', 'checkin_method', 'created_at', 'updated_at'
+            'status', 'token', 'owner_id',
+            'owner_name', 'reserved_until', 'checkin_at', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'token', 'qr_code', 'created_at', 'updated_at']
-
-    def get_qr_code(self, obj):
-        if obj.status in ['confirmed', 'used']:
-            return TicketService.generate_qr_base64(obj.token)
-        return None
+        read_only_fields = ['id', 'token', 'created_at', 'updated_at']
 
 
 class TicketHoldSerializer(serializers.ModelSerializer):

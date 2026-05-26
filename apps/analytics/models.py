@@ -1,8 +1,9 @@
 from django.db import models
 from django.conf import settings
+import uuid
 
 class EventView(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='views')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='user_id')
     source = models.CharField(max_length=255, blank=True, default='')
@@ -16,7 +17,7 @@ class EventView(models.Model):
 
 
 class EventAnalyticsDaily(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='daily_analytics')
     date = models.DateField()
     views = models.PositiveIntegerField(default=0)
@@ -36,7 +37,7 @@ class EventAnalyticsDaily(models.Model):
 
 
 class ActivityLog(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='user_id')
     action = models.CharField(max_length=255)
     entity_type = models.CharField(max_length=100, blank=True, default='')

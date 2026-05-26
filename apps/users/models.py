@@ -64,8 +64,8 @@ class User(AbstractUser):
     location = models.CharField(max_length=255, blank=True, default='')
     user_timezone = models.CharField(max_length=50, blank=True, default='UTC')
     language = models.CharField(max_length=10, blank=True, default='fr')
-    avatar_url = models.URLField(blank=True, default='')
-    cover_url = models.URLField(blank=True, default='')
+    avatar = models.ImageField(upload_to='users/avatars/', blank=True, null=True)
+    cover = models.ImageField(upload_to='users/covers/', blank=True, null=True)
     bio = models.TextField(blank=True, default='')
     website = models.URLField(blank=True, default='')
     social_links = models.JSONField(default=dict, blank=True)
@@ -182,7 +182,7 @@ class WalletTransaction(models.Model):
         return f"{self.type} – {self.amount} ({self.status})"
     
 class EmailVerificationToken(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
     token = models.CharField(max_length=255, unique=True)
     expires_at = models.DateTimeField()
@@ -192,7 +192,7 @@ class EmailVerificationToken(models.Model):
         db_table = 'arkevent.email_verification_tokens'
 
 class PasswordResetToken(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
     token = models.CharField(max_length=255, unique=True)
     expires_at = models.DateTimeField()

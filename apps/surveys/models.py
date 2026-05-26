@@ -1,8 +1,9 @@
 from django.db import models
 from django.conf import settings
+import uuid
 
 class Survey(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='surveys')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
@@ -24,7 +25,7 @@ class SurveyQuestion(models.Model):
         ('multiple_choice', 'Multiple Choice'),
         ('yes_no', 'Yes/No'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, db_column='survey_id', related_name='questions')
     question = models.TextField()
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
@@ -40,7 +41,7 @@ class SurveyQuestion(models.Model):
 
 
 class SurveyAnswer(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     question = models.ForeignKey(SurveyQuestion, on_delete=models.CASCADE, db_column='question_id', related_name='answers')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='survey_answers')
     answer = models.TextField()

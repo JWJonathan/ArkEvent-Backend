@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+import uuid
 
 class EmailCampaign(models.Model):
     STATUS_CHOICES = [
@@ -9,7 +10,7 @@ class EmailCampaign(models.Model):
         ('sent', 'Sent'),
         ('failed', 'Failed'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey('organization.Organization', on_delete=models.CASCADE, db_column='organization_id', related_name='email_campaigns')
     event = models.ForeignKey('events.Event', null=True, blank=True, on_delete=models.SET_NULL, db_column='event_id')
     subject = models.CharField(max_length=255)
@@ -32,7 +33,7 @@ class EmailCampaign(models.Model):
 
 
 class EmailSubscriber(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=100, blank=True, default='')
     is_active = models.BooleanField(default=True)

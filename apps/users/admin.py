@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from .models import User, Wallet, WalletTransaction
+from .models import User, Wallet, WalletTransaction, EmailVerificationToken, PasswordResetToken
 
 
 class CustomUserAdmin(BaseUserAdmin):
@@ -38,7 +38,7 @@ class CustomUserAdmin(BaseUserAdmin):
         (_('Personal information'), {
             'fields': (
                 'first_name', 'last_name', 'full_name',
-                'date_of_birth', 'gender', 'bio', 'avatar_url', 'cover_url',
+                'date_of_birth', 'gender', 'bio', 'avatar', 'cover',
             )
         }),
         (_('Contact & localisation'), {
@@ -101,13 +101,24 @@ class WalletTransactionAdmin(admin.ModelAdmin):
     list_filter = ('type', 'status')
     search_fields = ('user__email', 'description')
     readonly_fields = ('created_at',)
-    # Si le modèle 'payments.Order' n’existe pas encore, commentez la ligne suivante
-    autocomplete_fields = ['user', 'order']  # nécessite d’avoir un ModelAdmin pour Order
+    # autocomplete_fields = ['user', 'order'] # OrderAdmin needs search_fields for this to work
 
     def user_email(self, obj):
         return obj.user.email
     user_email.short_description = 'User email'
     user_email.admin_order_field = 'user__email'
+
+@admin.register(EmailVerificationToken)
+class EmailVerificationTokenAdmin(admin.ModelAdmin):
+    list_display = ('user', 'token', 'expires_at', 'created_at')
+    search_fields = ('user__email', 'token')
+    readonly_fields = ('created_at',)
+
+@admin.register(PasswordResetToken)
+class PasswordResetTokenAdmin(admin.ModelAdmin):
+    list_display = ('user', 'token', 'expires_at', 'created_at')
+    search_fields = ('user__email', 'token')
+    readonly_fields = ('created_at',)
 
 
 # Enregistrement des modèles

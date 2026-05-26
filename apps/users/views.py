@@ -294,6 +294,10 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         user.save(update_fields=['role', 'updated_at'])
         return Response({'status': 'Rôle mis à jour'})
 
+    @action(detail=False, methods=['get'], url_path='all')
+    def all_users(self, request):
+        return self.list(request)
+
     @action(detail=True, methods=['post'], url_path='ban')
     def toggle_ban(self, request, pk=None):
         user = self.get_object()

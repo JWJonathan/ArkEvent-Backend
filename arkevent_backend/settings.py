@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'corsheaders',
+    'storages',
 
     # Local apps
     'apps.core',
@@ -95,11 +96,11 @@ SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
 SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET')
 
 # Supabase Storage compatible S3
-SUPABASE_S3_ENDPOINT_URL = 'https://supabase.arkht.com/storage/v1/s3'
+SUPABASE_S3_ENDPOINT_URL = os.environ.get('SUPABASE_S3_ENDPOINT_URL', 'https://supabase.arkht.com/storage/v1/s3')
 SUPABASE_S3_ACCESS_KEY_ID = os.environ.get('S3_PROTOCOL_ACCESS_KEY_ID')
 SUPABASE_S3_SECRET_ACCESS_KEY = os.environ.get('S3_PROTOCOL_ACCESS_KEY_SECRET')
-SUPABASE_BUCKET_NAME = 'nom-de-votre-bucket'
-SUPABASE_S3_REGION = 'us-east-1'  # ou autre, Supabase l'ignore
+SUPABASE_BUCKET_NAME = os.environ.get('SUPABASE_BUCKET_NAME', 'arkevent-media')
+SUPABASE_S3_REGION = os.environ.get('SUPABASE_S3_REGION', 'us-east-1')
 # Optionnel : domaine personnalisé pour les URLs publiques (si configuré)
 SUPABASE_S3_CUSTOM_DOMAIN = None   # ou 'cdn.supabase.arkht.com' si tu as un CDN
 
@@ -246,5 +247,40 @@ USE_TZ = True
 # Static files
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Storage Configuration
+if DEBUG:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "access_key": SUPABASE_S3_ACCESS_KEY_ID,
+                "secret_key": SUPABASE_S3_SECRET_ACCESS_KEY,
+                "bucket_name": SUPABASE_BUCKET_NAME,
+                "endpoint_url": SUPABASE_S3_ENDPOINT_URL,
+                "region_name": SUPABASE_S3_REGION,
+                "file_overwrite": SUPABASE_FILE_OVERWRITE,
+                "custom_domain": SUPABASE_S3_CUSTOM_DOMAIN,
+                "default_acl": None,
+                "querystring_auth": False,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

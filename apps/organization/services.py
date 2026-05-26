@@ -8,7 +8,7 @@ class OrganizationService:
     def create_organization(user, data: dict):
         """
         Crée l'organisation et ajoute le créateur comme propriétaire.
-        data contient les champs : name, type, short_description, email, phone, website, logo_url, cover_url
+        data contient les champs : name, type, short_description, email, phone, website, logo, cover
         Retourne l'organisation créée.
         """
         with transaction.atomic():
@@ -19,8 +19,8 @@ class OrganizationService:
                 email=data.get('email', ''),
                 phone=data.get('phone', ''),
                 website=data.get('website', ''),
-                logo_url=data.get('logo_url', ''),
-                cover_url=data.get('cover_url', ''),
+                logo=data.get('logo', None),
+                cover=data.get('cover', None),
                 created_by=user,
             )
             OrganizationMember.objects.create(
@@ -37,7 +37,7 @@ class OrganizationService:
         data peut contenir les champs modifiables.
         verified peut être forcé (admin).
         """
-        for field in ['name', 'type', 'short_description', 'email', 'phone', 'website', 'logo_url', 'cover_url']:
+        for field in ['name', 'type', 'short_description', 'email', 'phone', 'website', 'logo', 'cover']:
             if field in data:
                 setattr(org, field, data[field])
         if verified is not None:
@@ -60,6 +60,7 @@ class OrganizationService:
         return Organization.objects.filter(
             members__user=user,
             members__status__in=['active', 'invited'],
+            # created_by=user,
             deleted_at__isnull=True
         ).distinct().order_by('-created_at')
 

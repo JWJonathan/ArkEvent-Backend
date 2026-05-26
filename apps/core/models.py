@@ -9,7 +9,7 @@ class Coupon(models.Model):
         ('percentage', 'Percentage'),
         ('fixed_amount', 'Fixed Amount'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey('organization.Organization', null=True, blank=True, on_delete=models.CASCADE, db_column='organization_id', related_name='coupons')
     event = models.ForeignKey('events.Event', null=True, blank=True, on_delete=models.CASCADE, db_column='event_id', related_name='coupons')
     code = models.CharField(max_length=50, unique=True)
@@ -36,7 +36,7 @@ class Coupon(models.Model):
 
 
 class CouponUsage(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE, db_column='coupon_id', related_name='usages')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id')
     order = models.ForeignKey('payments.Order', null=True, blank=True, on_delete=models.SET_NULL, db_column='order_id')
@@ -55,7 +55,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 
 class GiftCard(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     code = models.CharField(max_length=50, unique=True)
     initial_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     balance = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
@@ -80,7 +80,7 @@ class GiftCardTransaction(models.Model):
         ('redemption', 'Redemption'),
         ('refund', 'Refund'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     gift_card = models.ForeignKey(GiftCard, on_delete=models.CASCADE, db_column='gift_card_id', related_name='transactions')
     order = models.ForeignKey('payments.Order', null=True, blank=True, on_delete=models.SET_NULL, db_column='order_id')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -95,7 +95,7 @@ class GiftCardTransaction(models.Model):
 
 
 class LoyaltyPoint(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='loyalty_points')
     balance = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -115,7 +115,7 @@ class LoyaltyTransaction(models.Model):
         ('expire', 'Expire'),
         ('adjustment', 'Adjustment'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='loyalty_transactions')
     order = models.ForeignKey('payments.Order', null=True, blank=True, on_delete=models.SET_NULL, db_column='order_id')
     points = models.IntegerField()
@@ -131,7 +131,7 @@ class LoyaltyTransaction(models.Model):
 
 
 class Affiliate(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='user_id', related_name='affiliations')
     organization = models.ForeignKey('organization.Organization', null=True, blank=True, on_delete=models.CASCADE, db_column='organization_id', related_name='affiliates')
     code = models.CharField(max_length=50, unique=True)
@@ -153,7 +153,7 @@ class AffiliateTransaction(models.Model):
         ('paid', 'Paid'),
         ('cancelled', 'Cancelled'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, db_column='affiliate_id', related_name='transactions')
     order = models.ForeignKey('payments.Order', on_delete=models.CASCADE, db_column='order_id')
     order_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -171,7 +171,7 @@ class AffiliateTransaction(models.Model):
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Wishlist(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='wishlists')
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='wishlisted_by')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -185,7 +185,7 @@ class Wishlist(models.Model):
 
 
 class Review(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='reviews')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='reviews')
     rating = models.DecimalField(max_digits=2, decimal_places=1, validators=[MinValueValidator(1), MaxValueValidator(5)])
@@ -207,7 +207,7 @@ class Review(models.Model):
 
 
 class ReviewLike(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     review = models.ForeignKey(Review, on_delete=models.CASCADE, db_column='review_id', related_name='likes')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -221,7 +221,7 @@ class ReviewLike(models.Model):
 
 
 class UserTag(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='tags')
     tag = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)

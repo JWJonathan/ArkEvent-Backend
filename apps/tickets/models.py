@@ -4,6 +4,7 @@ from django.conf import settings
 from apps.events.models import Event
 
 class TicketType(models.Model):
+    """Représente un type de billet pour un événement donné."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="ticket_types", db_column='event_id')
     name = models.TextField()
@@ -22,6 +23,7 @@ class TicketType(models.Model):
         return f"{self.event.title} - {self.name}"
 
 class Ticket(models.Model):
+    """Représente un billet individuel acheté ou réservé par un utilisateur."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ticket_type = models.ForeignKey(TicketType, on_delete=models.CASCADE, related_name="tickets", db_column='ticket_type_id')
     order = models.ForeignKey("payments.Order", on_delete=models.SET_NULL, null=True, blank=True, related_name="tickets", db_column='order_id')

@@ -15,7 +15,7 @@ class IsAdmin(permissions.BasePermission):
 class IsOrganizer(permissions.BasePermission):
     def has_permission(self, request, view):
         # Vérifier que l'utilisateur peut créer un événement pour l'organisation fournie
-        org_id = request.data.get('organization_id')
+        org_id = request.data.get('organization') or request.data.get('organization_id')
         if not org_id:
             return False
         return OrganizationMember.objects.filter(

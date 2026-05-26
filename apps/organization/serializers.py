@@ -8,7 +8,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = [
             'id', 'name', 'type', 'short_description', 'email', 'phone',
-            'website', 'logo_url', 'cover_url', 'created_by', 'created_by_email',
+            'website', 'logo', 'cover', 'created_by', 'created_by_email',
             'verified', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_by', 'created_by_email', 'created_at', 'updated_at']

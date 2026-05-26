@@ -9,17 +9,17 @@ class EventSerializer(serializers.ModelSerializer):
     organization_name = serializers.ReadOnlyField(source='organization.name')
     category_name = serializers.ReadOnlyField(source='category.name')
     created_by_email = serializers.ReadOnlyField(source='created_by.email')
-    image_url = serializers.URLField(source='poster_url', read_only=True)  # alias pour compatibilité Flutter
+    image_url = serializers.ImageField(source='poster', read_only=True)  # alias pour compatibilité Flutter
 
     class Meta:
         model = Event
         fields = [
-            'id', 'organization_id', 'organization_name',
+            'id', 'organization', 'organization_id', 'organization_name',
             'category_id', 'category_name',
             'created_by', 'created_by_email',
             'title', 'slug', 'short_description', 'description',
             'highlights', 'tags',
-            'poster_url', 'banner_url', 'thumbnail_url', 'image_url',  # image_url = poster_url
+            'poster', 'banner', 'thumbnail', 'video', 'image_url',
             'start_date', 'end_date', 'doors_open', 'timezone',
             'venue_name', 'venue_address', 'venue_city', 'venue_state',
             'venue_country', 'venue_postal_code', 'latitude', 'longitude',
@@ -37,7 +37,7 @@ class EventSerializer(serializers.ModelSerializer):
             'metadata', 'settings',
             'created_at', 'updated_at', 'published_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'published_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'published_at', 'organization_name', 'category_name', 'created_by_email', 'created_by']
 
 class EventCategorySerializer(serializers.ModelSerializer):
     parent_name = serializers.ReadOnlyField(source='parent.name')
@@ -46,7 +46,7 @@ class EventCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = EventCategory
         fields = [
-            'id', 'name', 'slug', 'description', 'icon', 'image_url',
+            'id', 'name', 'slug', 'description', 'icon', 'image',
             'parent', 'parent_name', 'children',
             'sort_order', 'is_active', 'created_at', 'updated_at'
         ]
@@ -61,7 +61,7 @@ class EventSessionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'event_id', 'event_title', 'title', 'description',
             'session_type', 'start_time', 'end_time', 'location',
-            'capacity', 'speakers', 'image_url', 'recording_url',
+            'capacity', 'speakers', 'image', 'recording',
             'requires_ticket', 'ticket_type_id', 'sort_order',
             'created_at', 'updated_at'
         ]
@@ -74,10 +74,11 @@ class EventSpeakerSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventSpeaker
         fields = [
-            'id', 'event_id', 'event_title', 'profile_id', 'full_name',
-            'role', 'bio', 'photo_url', 'social_links', 'sort_order', 'created_at'
+            'id', 'event', 'event_id', 'event_title', 'profile_id', 'full_name',
+            'role', 'bio', 'photo', 'social_links', 'sort_order', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
 
 
 class EventOrganizerSerializer(serializers.ModelSerializer):
@@ -98,7 +99,7 @@ class EventMediaSerializer(serializers.ModelSerializer):
         model = EventMedia
         fields = [
             'id', 'event_id', 'event_title', 'uploaded_by', 'uploader_name',
-            'media_type', 'url', 'alt_text', 'title', 'description',
+            'media_type', 'file', 'alt_text', 'title', 'description',
             'sort_order', 'is_featured', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
@@ -110,7 +111,7 @@ class EventSponsorSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventSponsor
         fields = [
-            'id', 'event_id', 'event_title', 'name', 'logo_url',
+            'id', 'event_id', 'event_title', 'name', 'logo',
             'website', 'level', 'description', 'sort_order', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']

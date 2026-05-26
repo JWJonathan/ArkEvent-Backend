@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+import uuid
 
 class NetworkingMatch(models.Model):
     STATUS_CHOICES = [
@@ -7,7 +8,7 @@ class NetworkingMatch(models.Model):
         ('accepted', 'Accepted'),
         ('declined', 'Declined'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='networking_matches')
     user1 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user1_id', related_name='matches_as_user1')
     user2 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user2_id', related_name='matches_as_user2')
@@ -36,11 +37,11 @@ class SocialPost(models.Model):
         ('posted', 'Posted'),
         ('failed', 'Failed'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='social_posts')
     platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES)
     content = models.TextField()
-    image_url = models.URLField(blank=True, default='')
+    image = models.ImageField(upload_to='social/posts/', blank=True, null=True)
     scheduled_at = models.DateTimeField(null=True, blank=True)
     posted_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')

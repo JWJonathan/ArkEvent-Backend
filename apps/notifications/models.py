@@ -1,9 +1,10 @@
 from django.db import models
 from django.conf import settings
+import uuid
 
 class NotificationLog(models.Model):
     TYPES = [('push','Push'), ('email','Email'), ('sms','SMS')]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='notification_logs')
     type = models.CharField(max_length=10, choices=TYPES, default='push')
     title = models.CharField(max_length=255, blank=True, default='')
@@ -22,7 +23,7 @@ class NotificationLog(models.Model):
 
 
 class EventNotificationSetting(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='notification_settings')
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='notification_settings')
     push_enabled = models.BooleanField(default=True)
@@ -38,7 +39,7 @@ class EventNotificationSetting(models.Model):
 
 class PushToken(models.Model):
     PLATFORMS = [('ios','iOS'), ('android','Android'), ('web','Web')]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='push_tokens')
     token = models.TextField()
     platform = models.CharField(max_length=10, choices=PLATFORMS)
@@ -51,7 +52,7 @@ class PushToken(models.Model):
         unique_together = ('user', 'token')
 
 class UserDevice(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='devices')
     device_id = models.CharField(max_length=255, blank=True, default='')
     device_name = models.CharField(max_length=255, blank=True, default='')

@@ -24,7 +24,7 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
     - updateTicketType()
     - deleteTicketType()
     """
-    queryset = TicketType.objects.filter(deleted_at__isnull=True)
+    queryset = TicketType.objects.filter(deleted_at__isnull=True).order_by('-created_at')
     serializer_class = TicketTypeSerializer
     permission_classes = [permissions.IsAuthenticated]  # la vue ajuste selon l'action
 
@@ -32,22 +32,31 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if user.is_staff:
-            return qs
-        return qs.filter(
-            Q(event__visibility='public', event__status='published') |
-            Q(event__organizers__user=user)
-        ).distinct()
+            pass # Keep all
+        else:
+            qs = qs.filter(
+                Q(event__visibility='public', event__status='published') |
+                Q(event__organizers__user=user)
+            )
+        
         event_id = self.request.query_params.get('event_id')
         if event_id:
             qs = qs.filter(event_id=event_id)
-        return qs
+        return qs.distinct()
 
     def perform_create(self, serializer):
-        # Vérifier que l'utilisateur est organisateur de l'événement
-        event = serializer.validated_data['event']
+        # Récupérer event depuis le payload ou validated_data
+        event = serializer.validated_data.get('event')
+        if not event:
+            event_id = self.request.data.get('event_id')
+            if not event_id:
+                raise PermissionDenied("L'ID de l'événement est requis.")
+            from apps.events.models import Event
+            event = Event.objects.get(id=event_id)
+            
         if event.organization.created_by != self.request.user and not self.request.user.is_staff:
             raise PermissionDenied("Vous ne pouvez pas créer de type de billet pour cet événement.")
-        serializer.save()
+        serializer.save(event=event)
 
     def perform_update(self, serializer):
         instance = self.get_object()

@@ -1,6 +1,8 @@
-from rest_framework import viewsets, permissions, filters, status
+from rest_framework import viewsets, permissions, filters, status, exceptions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
 from .models import Event, EventCategory, EventSession, EventSpeaker, EventOrganizer, EventMedia, EventSponsor, EventFaq, Announcement, EventShare
 from .serializers import EventSerializer, EventCategorySerializer, EventSessionSerializer, EventSpeakerSerializer, EventOrganizerSerializer, EventMediaSerializer, EventSponsorSerializer, EventFaqSerializer, AnnouncementSerializer, EventShareSerializer
@@ -9,6 +11,7 @@ from apps.core.permissions import IsAdmin, IsOrganizer, IsEventOwner
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.filter(deleted_at__isnull=True).order_by('-created_at')
     serializer_class = EventSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = 'id'  # on utilise l'ID, mais on peut aussi chercher par slug avec une action
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -108,6 +111,49 @@ class EventViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
         serializer = self.get_serializer(event)
         return Response(serializer.data)
+
+    # ─── Nested Routes Support ───
+    @action(detail=True, methods=['get'])
+    def sessions(self, request, id=None):
+        event = self.get_object()
+        sessions = event.sessions.filter(deleted_at__isnull=True).order_by('start_time')
+        serializer = EventSessionSerializer(sessions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def speakers(self, request, id=None):
+        event = self.get_object()
+        speakers = event.speakers.all().order_by('sort_order')
+        serializer = EventSpeakerSerializer(speakers, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def faq(self, request, id=None):
+        event = self.get_object()
+        faqs = event.faqs.all().order_by('sort_order')
+        serializer = EventFaqSerializer(faqs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def sponsors(self, request, id=None):
+        event = self.get_object()
+        sponsors = event.sponsors.all().order_by('sort_order')
+        serializer = EventSponsorSerializer(sponsors, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def media(self, request, id=None):
+        event = self.get_object()
+        media = event.media.all().order_by('sort_order')
+        serializer = EventMediaSerializer(media, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def organizers(self, request, id=None):
+        event = self.get_object()
+        organizers = event.organizers.all()
+        serializer = EventOrganizerSerializer(organizers, many=True)
+        return Response(serializer.data)
     
 from rest_framework import viewsets, permissions
 from .models import EventCategory
@@ -200,7 +246,17 @@ class EventSpeakerViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
     def perform_create(self, serializer):
-        serializer.save()
+        # Récupérer event depuis le payload ou validated_data
+        event = serializer.validated_data.get('event')
+        if not event:
+            event_id = self.request.data.get('event_id')
+            if not event_id:
+                raise PermissionDenied("L'ID de l'événement est requis.")
+            from apps.events.models import Event
+            event = Event.objects.get(id=event_id)
+        
+        serializer.save(event=event)
+
 
     def perform_update(self, serializer):
         serializer.save()
@@ -251,7 +307,17 @@ class EventSponsorViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
     def perform_create(self, serializer):
-        serializer.save()
+        # Récupérer event depuis le payload ou validated_data
+        event = serializer.validated_data.get('event')
+        if not event:
+            event_id = self.request.data.get('event_id')
+            if not event_id:
+                raise PermissionDenied("L'ID de l'événement est requis.")
+            from apps.events.models import Event
+            event = Event.objects.get(id=event_id)
+        
+        serializer.save(event=event)
+
 
     def perform_update(self, serializer):
         serializer.save()
@@ -266,7 +332,17 @@ class EventFaqViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
     def perform_create(self, serializer):
-        serializer.save()
+        # Récupérer event depuis le payload ou validated_data
+        event = serializer.validated_data.get('event')
+        if not event:
+            event_id = self.request.data.get('event_id')
+            if not event_id:
+                raise PermissionDenied("L'ID de l'événement est requis.")
+            from apps.events.models import Event
+            event = Event.objects.get(id=event_id)
+        
+        serializer.save(event=event)
+
 
     def perform_update(self, serializer):
         serializer.save(updated_at=timezone.now())
@@ -282,11 +358,21 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
     def perform_create(self, serializer):
+        # Récupérer event depuis le payload ou validated_data
+        event = serializer.validated_data.get('event')
+        if not event:
+            event_id = self.request.data.get('event_id')
+            if not event_id:
+                raise exceptions.PermissionDenied("L'ID de l'événement est requis.")
+            from apps.events.models import Event
+            event = Event.objects.get(id=event_id)
+        
         # Si le sender n'est pas fourni, on prend l'utilisateur connecté
-        if not serializer.validated_data.get('sender'):
-            serializer.save(sender=self.request.user)
+        sender = serializer.validated_data.get('sender')
+        if not sender:
+            serializer.save(event=event, sender=self.request.user)
         else:
-            serializer.save()
+            serializer.save(event=event)
 
     def perform_update(self, serializer):
         serializer.save()

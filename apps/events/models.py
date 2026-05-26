@@ -35,7 +35,7 @@ class Event(models.Model):
         ('code', 'Code'),
     ]
 
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey('organization.Organization', on_delete=models.CASCADE, db_column='organization_id')
     category = models.ForeignKey('events.EventCategory', on_delete=models.SET_NULL, null=True, blank=True, db_column='category_id')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='created_by')
@@ -45,9 +45,10 @@ class Event(models.Model):
     description = models.TextField(blank=True, default='')
     highlights = models.TextField(blank=True, default='')
     tags = ArrayField(models.TextField(), blank=True, default=list)
-    poster_url = models.URLField(blank=True, default='')
-    banner_url = models.URLField(blank=True, default='')
-    thumbnail_url = models.URLField(blank=True, default='')
+    poster = models.ImageField(upload_to='events/posters/', blank=True, null=True)
+    banner = models.ImageField(upload_to='events/banners/', blank=True, null=True)
+    thumbnail = models.ImageField(upload_to='events/thumbnails/', blank=True, null=True)
+    video = models.FileField(upload_to='events/videos/', blank=True, null=True)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField(null=True, blank=True)
     doors_open = models.DateTimeField(null=True, blank=True)
@@ -110,12 +111,12 @@ class Event(models.Model):
             super().delete(using=using, keep_parents=keep_parents)
 
 class EventCategory(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
     description = models.TextField(blank=True, default='')
     icon = models.CharField(max_length=255, blank=True, default='')
-    image_url = models.URLField(blank=True, default='')
+    image = models.ImageField(upload_to='categories/', blank=True, null=True)
     parent = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
@@ -150,7 +151,7 @@ class EventSession(models.Model):
         ('networking', 'Networking'),
         ('other', 'Other'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='sessions')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
@@ -160,8 +161,8 @@ class EventSession(models.Model):
     location = models.CharField(max_length=255, blank=True, default='')
     capacity = models.PositiveIntegerField(null=True, blank=True)
     speakers = models.JSONField(default=list, blank=True)   # liste d'objets (jsonb)
-    image_url = models.URLField(blank=True, default='')
-    recording_url = models.URLField(blank=True, default='')
+    image = models.ImageField(upload_to='sessions/images/', blank=True, null=True)
+    recording = models.FileField(upload_to='sessions/recordings/', blank=True, null=True)
     requires_ticket = models.BooleanField(default=False)
     ticket_type = models.ForeignKey('tickets.TicketType', null=True, blank=True, on_delete=models.SET_NULL, db_column='ticket_type_id')
     sort_order = models.IntegerField(default=0)
@@ -177,13 +178,13 @@ class EventSession(models.Model):
 
 
 class EventSpeaker(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='speakers')
     profile = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='profile_id')
     full_name = models.CharField(max_length=255)
     role = models.CharField(max_length=255, blank=True, default='')
     bio = models.TextField(blank=True, default='')
-    photo_url = models.URLField(blank=True, default='')
+    photo = models.ImageField(upload_to='speakers/photos/', blank=True, null=True)
     social_links = models.JSONField(default=dict, blank=True)
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -201,7 +202,7 @@ class EventOrganizer(models.Model):
         ('viewer', 'Viewer'),
         ('controller', 'Controller'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='organizers')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='manager')
@@ -222,11 +223,11 @@ class EventMedia(models.Model):
         ('video', 'Video'),
         ('document', 'Document'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='media')
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='uploaded_by')
     media_type = models.CharField(max_length=20, choices=MEDIA_TYPE_CHOICES)
-    url = models.URLField()
+    file = models.FileField(upload_to='events/media/')
     alt_text = models.CharField(max_length=255, blank=True, default='')
     title = models.CharField(max_length=255, blank=True, default='')
     description = models.TextField(blank=True, default='')
@@ -238,14 +239,14 @@ class EventMedia(models.Model):
         db_table = 'arkevent.event_media'
 
     def __str__(self):
-        return f"{self.media_type}: {self.title or self.url}"
+        return f"{self.media_type}: {self.title or self.file.name}"
 
 
 class EventSponsor(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='sponsors')
     name = models.CharField(max_length=255)
-    logo_url = models.URLField(blank=True, default='')
+    logo = models.ImageField(upload_to='sponsors/logos/', blank=True, null=True)
     website = models.URLField(blank=True, default='')
     level = models.CharField(max_length=100, blank=True, default='')
     description = models.TextField(blank=True, default='')
@@ -259,7 +260,7 @@ class EventSponsor(models.Model):
         return self.name
 
 class EventFaq(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='faqs')
     question = models.TextField()
     answer = models.TextField()
@@ -281,7 +282,7 @@ class Announcement(models.Model):
         ('high', 'High'),
         ('critical', 'Critical'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='announcements')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='sender_id')
     title = models.CharField(max_length=255, blank=True, default='')
@@ -299,7 +300,7 @@ class Announcement(models.Model):
         return self.title or self.message[:50]
 
 class EventShare(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='shares')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, db_column='user_id')
     platform = models.CharField(max_length=50)  # ex: 'facebook', 'twitter', 'whatsapp'

@@ -1,8 +1,9 @@
 from django.db import models
 from django.conf import settings
+import uuid
 
 class RegistrationForm(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='registration_forms')
     title = models.CharField(max_length=255, default="Formulaire d'inscription")
     is_required = models.BooleanField(default=False)
@@ -27,7 +28,7 @@ class RegistrationField(models.Model):
         ('file', 'File'),
         ('number', 'Number'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     form = models.ForeignKey(RegistrationForm, on_delete=models.CASCADE, db_column='form_id', related_name='fields')
     label = models.CharField(max_length=255)
     field_type = models.CharField(max_length=20, choices=FIELD_TYPES)
@@ -44,7 +45,7 @@ class RegistrationField(models.Model):
 
 
 class RegistrationAnswer(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     field = models.ForeignKey(RegistrationField, on_delete=models.CASCADE, db_column='field_id', related_name='answers')
     order = models.ForeignKey('payments.Order', on_delete=models.CASCADE, db_column='order_id', related_name='registration_answers')
     ticket = models.ForeignKey('tickets.Ticket', null=True, blank=True, on_delete=models.SET_NULL, db_column='ticket_id')
@@ -59,7 +60,7 @@ class RegistrationAnswer(models.Model):
 
 
 class Attendance(models.Model):
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ticket = models.OneToOneField('tickets.Ticket', on_delete=models.CASCADE, db_column='ticket_id', related_name='attendance')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id')
     checkin_at = models.DateTimeField(auto_now_add=True)
@@ -84,7 +85,7 @@ class Badge(models.Model):
         ('press', 'Press'),
         ('exhibitor', 'Exhibitor'),
     ]
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, db_column='event_id', related_name='badges')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id')
     type = models.CharField(max_length=20, choices=BADGE_TYPES, default='attendee')

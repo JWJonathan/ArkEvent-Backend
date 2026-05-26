@@ -20,6 +20,8 @@ dist/
 *.whl
 # Fichiers de documentation
 docs/
+# Fichiers de media
+media/
 # Fichiers de couverture de code
 .coverage
 # Fichiers de configuration de l'éditeur

@@ -22,7 +22,7 @@ class SocialPostSerializer(serializers.ModelSerializer):
         model = SocialPost
         fields = [
             'id', 'event_id', 'event_title', 'platform', 'content',
-            'image_url', 'scheduled_at', 'posted_at', 'status',
+            'image', 'scheduled_at', 'posted_at', 'status',
             'created_by', 'creator_name', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

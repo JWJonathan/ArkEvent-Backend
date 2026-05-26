@@ -10,15 +10,16 @@ class Organization(models.Model):
         ('other', 'Other'),
     ]
 
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
     type = models.CharField(max_length=50, choices=ORG_TYPES, default='other')
     short_description = models.TextField(blank=True, default='')
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=50, blank=True, default='')
     website = models.URLField(blank=True, default='')
-    logo_url = models.URLField(blank=True, default='')
-    cover_url = models.URLField(blank=True, default='')
+    logo = models.ImageField(upload_to='organizations/logos/', blank=True, null=True)
+    cover = models.ImageField(upload_to='organizations/covers/', blank=True, null=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='organizations')
     verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -45,7 +46,7 @@ class OrganizationMember(models.Model):
         ('suspended', 'Suspended'),
     ]
 
-    id = models.UUIDField(primary_key=True, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='members')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     org_role = models.CharField(max_length=50, choices=ROLES, default='viewer')
