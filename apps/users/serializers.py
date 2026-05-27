@@ -68,20 +68,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
             validated_data.pop('role', None)
         return super().update(instance, validated_data)
 
-from .models import Wallet, WalletTransaction
+from apps.wallets.models import Wallet, WalletTransaction
 
 class WalletSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
         model = Wallet
-        fields = ['id', 'user', 'user_email', 'balance', 'currency', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'user_email', 'available_balance', 'pending_balance', 'currency', 'created_at', 'updated_at']
 
 
 class WalletTransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = WalletTransaction
-        fields = ['id', 'user', 'amount', 'type', 'status', 'description', 'order', 'metadata', 'created_at']
+        fields = ['id', 'wallet', 'transaction_type', 'status', 'amount', 'currency', 'balance_after', 'reference_id', 'description', 'created_at']
 
 from .models import EmailVerificationToken, PasswordResetToken
 

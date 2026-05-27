@@ -8,7 +8,6 @@ from .views import (
     PasswordResetConfirmView,
     UserProfileView,
     SocialLoginView,
-    WalletViewSet,
     AdminUserViewSet,
 )
 
@@ -39,7 +38,6 @@ from .views import EmailVerificationTokenViewSet, PasswordResetTokenViewSet
 router = DefaultRouter()
 router.register(r'email-verification-tokens', EmailVerificationTokenViewSet, basename='email-tokens')
 router.register(r'password-reset-tokens', PasswordResetTokenViewSet, basename='pwd-reset-tokens')
-router.register(r'wallet', WalletViewSet, basename='wallet')
 router.register(r'admin', AdminUserViewSet, basename='admin-users')
 
 

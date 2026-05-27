@@ -104,5 +104,58 @@ class CanManageEvent(BasePermission):
             user=user,
             role__in=['manager', 'controller']
         ).exists()
-    
-    
+
+
+# ============================================================================
+# FINANCIAL PERMISSIONS
+# ============================================================================
+
+class IsWalletOwner(permissions.BasePermission):
+    """Allow user to access only their own wallet."""
+    def has_object_permission(self, request, view, obj):
+        if hasattr(obj, 'user'):
+            return obj.user == request.user
+        elif hasattr(obj, 'wallet'):
+            return obj.wallet.user == request.user
+        return False
+
+
+class IsAccountOwner(permissions.BasePermission):
+    """Allow user to access only their own account resources."""
+    def has_object_permission(self, request, view, obj):
+        if hasattr(obj, 'user'):
+            return obj.user == request.user
+        elif hasattr(obj, 'wallet'):
+            return obj.wallet.user == request.user
+        return False
+
+
+class CanProcessRefund(permissions.BasePermission):
+    """Allow only staff/admin to process refunds."""
+    def has_permission(self, request, view):
+        return request.user and request.user.is_staff
+
+
+class CanApproveWithdrawal(permissions.BasePermission):
+    """Allow only finance staff to approve/process withdrawals."""
+    def has_permission(self, request, view):
+        return request.user and request.user.is_staff
+
+
+class IsSubscriptionOwner(permissions.BasePermission):
+    """Allow user to access only their own subscription."""
+    def has_object_permission(self, request, view, obj):
+        return obj.user == request.user
+
+
+class CanViewOrganizerAnalytics(permissions.BasePermission):
+    """Allow organizers to view their own analytics."""
+    def has_object_permission(self, request, view, obj):
+        # Organizers can see their own organization's analytics
+        if hasattr(obj, 'organizer'):
+            return obj.organizer.created_by == request.user
+        # Admin can see all
+        if request.user.is_staff:
+            return True
+        return False
+

@@ -51,6 +51,9 @@ INSTALLED_APPS = [
     'apps.networking',
     'apps.surveys',
     'apps.analytics',
+    'apps.wallets',
+    'apps.subscriptions',
+    'apps.finance',
 ]
 
 MIDDLEWARE = [
