@@ -26,7 +26,7 @@ COPY entrypoint.sh /app/
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8030
 
 # Start gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "arkevent_backend.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8030", "arkevent_backend.wsgi:application"]

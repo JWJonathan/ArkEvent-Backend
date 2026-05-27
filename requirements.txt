@@ -20,6 +20,7 @@ Django==6.0.5
 django-cors-headers==4.9.0
 django-environ==0.13.0
 django-extensions==4.1
+django-filter==25.2
 django-storages==1.14.4
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
