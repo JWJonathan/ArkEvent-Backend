@@ -167,6 +167,10 @@ class SubscriptionService:
         # For example, free plan is always eligible
         if plan.tier == 'free':
             return True
+            
+        # Anonymous users are not eligible for non-free plans
+        if user.is_anonymous:
+            return False
         
         # Check if user already has an active subscription to the same or higher tier
         active = SubscriptionService.get_active_subscription(user)
