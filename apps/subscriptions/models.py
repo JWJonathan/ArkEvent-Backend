@@ -134,6 +134,11 @@ class UserSubscription(models.Model):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True)
     
+    # In-App Purchase fields
+    purchase_token = models.TextField(unique=True, null=True, blank=True)
+    order_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    expiry_date = models.DateTimeField(null=True, blank=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

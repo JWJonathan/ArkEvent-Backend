@@ -25,6 +25,8 @@ django-storages==1.14.4
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
 fsspec==2026.4.0
+google-api-python-client==2.162.0
+google-auth==2.38.0
 gunicorn==26.0.0
 h11==0.16.0
 h2==4.3.0

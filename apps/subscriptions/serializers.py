@@ -33,6 +33,7 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
             'id', 'user', 'plan', 'plan_data', 'status', 'status_display',
             'start_date', 'end_date', 'renewal_date', 'auto_renew',
             'payment_method', 'payment_method_display', 'amount_paid', 'currency',
+            'purchase_token', 'order_id', 'expiry_date',
             'cancelled_at', 'cancellation_reason', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'start_date', 'created_at', 'updated_at']

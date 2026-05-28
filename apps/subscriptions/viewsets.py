@@ -144,6 +144,73 @@ class UserSubscriptionViewSet(viewsets.ViewSet):
         features = SubscriptionAnalyticsService.get_user_subscription_features(request.user)
         return Response(features)
 
+    @action(detail=False, methods=['post'], url_path='verify-iap', permission_classes=[permissions.IsAuthenticated])
+    def verify_iap(self, request):
+        """Verify Google Play In-App Purchase and update subscription."""
+        token = request.data.get('purchase_token')
+        product_id = request.data.get('product_id')  # e.g., "arkevent_pro_monthly"
+        package_name = request.data.get('package_name', "com.arkevent.app")
+        
+        if not token or not product_id:
+            return Response(
+                {'error': 'purchase_token and product_id are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # 1. Validate with Google
+            result = verify_google_purchase(package_name, product_id, token)
+
+            # 2. Extract expiration date
+            expiry_millis = int(result.get('expiryTimeMillis', 0))
+            expiry_date = datetime.fromtimestamp(expiry_millis / 1000.0, tz=timezone.utc)
+
+            if expiry_date < datetime.now(timezone.utc):
+                return Response({'error': 'Subscription has expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 3. Identify the corresponding plan
+            target_tier = None
+            for tier, _ in SubscriptionPlan.TIER_CHOICES:
+                if tier != 'free' and tier in product_id.lower():
+                    target_tier = tier
+                    break
+            
+            if not target_tier:
+                target_tier = 'pro'
+                
+            try:
+                plan = SubscriptionPlan.objects.get(tier=target_tier)
+            except SubscriptionPlan.DoesNotExist:
+                return Response({'error': f'Plan tier {target_tier} not found in database'}, status=status.HTTP_404_NOT_FOUND)
+
+            # 4. Create or update subscription
+            from django.utils import timezone as django_timezone
+            
+            subscription, created = UserSubscription.objects.update_or_create(
+                user=request.user,
+                defaults={
+                    'plan': plan,
+                    'status': 'active',
+                    'purchase_token': token,
+                    'order_id': result.get('orderId'),
+                    'expiry_date': expiry_date,
+                    'renewal_date': expiry_date.date(),
+                    'end_date': expiry_date.date(),
+                    'amount_paid': 0,
+                    'currency': 'USD',
+                }
+            )
+            
+            if created or not subscription.start_date:
+                subscription.start_date = django_timezone.now().date()
+                subscription.save()
+
+            serializer = UserSubscriptionSerializer(subscription)
+            return Response(serializer.data)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class PremiumFeatureViewSet(viewsets.ReadOnlyModelViewSet):
     """Browse available premium features."""
