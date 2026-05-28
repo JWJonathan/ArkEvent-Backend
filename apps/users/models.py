@@ -72,6 +72,8 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
     is_verified = models.BooleanField(default=False)
     is_public = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
+    email_verification_code = models.CharField(max_length=10, blank=True, null=True, db_column='email_verification_code')
     notification_preferences = models.JSONField(default=dict, blank=True)
     settings = models.JSONField(default=dict, blank=True)
     referral_code = models.CharField(max_length=50, blank=True, default='')

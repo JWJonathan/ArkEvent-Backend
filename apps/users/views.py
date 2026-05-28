@@ -10,9 +10,15 @@ from .serializers import (
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
     UserProfileSerializer
 )
+from .tasks import send_verification_email, send_password_reset_email
 import random
+import string
 
 User = get_user_model()
+
+def generate_verification_code(length=6):
+    """Generate a random 6-digit verification code."""
+    return ''.join(random.choices(string.digits, k=length))
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -23,10 +29,22 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        # Ici, on pourrait envoyer un OTP par email (pour la vérification)
+        
+        # Generate and store verification code
+        code = generate_verification_code()
+        user.email_verification_code = code
+        user.save(update_fields=['email_verification_code'])
+        
+        # Send verification email asynchronously
+        send_verification_email.delay(str(user.id), code)
+        
         return Response({
-            "detail": "Inscription réussie. Veuillez vérifier votre email.",
-            "user_id": str(user.id)
+            "success": True,
+            "data": {
+                "detail": "Inscription réussie. Veuillez vérifier votre email.",
+                "user_id": str(user.id)
+            },
+            "message": ""
         }, status=status.HTTP_201_CREATED)
 
 class VerifyEmailView(APIView):
@@ -35,16 +53,28 @@ class VerifyEmailView(APIView):
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        otp = serializer.validated_data['otp']
-
-        # Simulation : OTP accepté si = '123456'
-        if otp != '123456':
-            return Response({"detail": "OTP invalide"}, status=status.HTTP_400_BAD_REQUEST)
+        code = serializer.validated_data['otp']
 
         user = request.user
+        
+        # Check if code matches
+        if user.email_verification_code != code:
+            return Response({
+                "success": False,
+                "errors": {"otp": "Code de vérification invalide"}
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark email as verified
+        user.email_verified = True
         user.is_verified = True
-        user.save(update_fields=['is_verified', 'updated_at'])
-        return Response({"detail": "Email vérifié avec succès."})
+        user.email_verification_code = None  # Clear the code
+        user.save(update_fields=['email_verified', 'is_verified', 'email_verification_code', 'updated_at'])
+        
+        return Response({
+            "success": True,
+            "data": {"detail": "Email vérifié avec succès."},
+            "message": ""
+        }, status=status.HTTP_200_OK)
 
 class ResendOtpView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -55,11 +85,33 @@ class ResendOtpView(APIView):
         email = serializer.validated_data['email']
         try:
             user = User.objects.get(email=email)
+            
+            # Check if already verified
+            if user.email_verified:
+                return Response({
+                    "success": False,
+                    "errors": {"email": "Cet email est déjà vérifié"}
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Generate new code
+            code = generate_verification_code()
+            user.email_verification_code = code
+            user.save(update_fields=['email_verification_code'])
+            
+            # Send verification email
+            send_verification_email.delay(str(user.id), code)
+            
+            return Response({
+                "success": True,
+                "data": {"detail": "Code de vérification renvoyé à votre email."},
+                "message": ""
+            }, status=status.HTTP_200_OK)
+        
         except User.DoesNotExist:
-            return Response({"detail": "Aucun utilisateur trouvé avec cet email."}, status=status.HTTP_404_NOT_FOUND)
-        # Envoyer OTP (simulé)
-        print(f"OTP pour {email}: 123456")
-        return Response({"detail": "OTP renvoyé à votre email."})
+            return Response({
+                "success": False,
+                "errors": {"email": "Utilisateur non trouvé"}
+            }, status=status.HTTP_404_NOT_FOUND)
 
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -70,11 +122,28 @@ class PasswordResetRequestView(APIView):
         email = serializer.validated_data['email']
         try:
             user = User.objects.get(email=email)
+            
+            # Generate reset code
+            code = generate_verification_code()
+            user.email_verification_code = code
+            user.save(update_fields=['email_verification_code'])
+            
+            # Send password reset email
+            send_password_reset_email.delay(str(user.id), code)
+            
+            return Response({
+                "success": True,
+                "data": {"detail": "Code de réinitialisation envoyé à votre email."},
+                "message": ""
+            }, status=status.HTTP_200_OK)
+        
         except User.DoesNotExist:
-            return Response({"detail": "Si l'email existe, un OTP a été envoyé."})
-        # Envoyer OTP (simulé)
-        print(f"OTP de réinitialisation pour {email}: 123456")
-        return Response({"detail": "OTP envoyé à votre email."})
+            # Don't reveal if user exists or not for security reasons
+            return Response({
+                "success": True,
+                "data": {"detail": "Si l'email existe, un code de réinitialisation a été envoyé."},
+                "message": ""
+            }, status=status.HTTP_200_OK)
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -83,20 +152,35 @@ class PasswordResetConfirmView(APIView):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
-        otp = serializer.validated_data['otp']
+        code = serializer.validated_data['otp']
         new_password = serializer.validated_data['new_password']
-
-        if otp != '123456':
-            return Response({"detail": "OTP invalide"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(email=email)
+            
+            # Check if code matches
+            if user.email_verification_code != code:
+                return Response({
+                    "success": False,
+                    "errors": {"otp": "Code de réinitialisation invalide"}
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update password
+            user.set_password(new_password)
+            user.email_verification_code = None  # Clear the code
+            user.save(update_fields=['password', 'email_verification_code', 'updated_at'])
+            
+            return Response({
+                "success": True,
+                "data": {"detail": "Mot de passe réinitialisé avec succès."},
+                "message": ""
+            }, status=status.HTTP_200_OK)
+        
         except User.DoesNotExist:
-            return Response({"detail": "Utilisateur introuvable"}, status=status.HTTP_404_NOT_FOUND)
-
-        user.set_password(new_password)
-        user.save(update_fields=['password', 'updated_at'])
-        return Response({"detail": "Mot de passe réinitialisé avec succès."})
+            return Response({
+                "success": False,
+                "errors": {"email": "Utilisateur non trouvé"}
+            }, status=status.HTTP_404_NOT_FOUND)
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer

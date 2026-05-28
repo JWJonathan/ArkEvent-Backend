@@ -33,7 +33,7 @@ class PlatformRevenue(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'arkevent"."platform_revenue'
+        db_table = 'arkevent.platform_revenue'
         indexes = [
             models.Index(fields=['revenue_date']),
             models.Index(fields=['revenue_month']),
@@ -95,7 +95,7 @@ class RevenueReport(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'arkevent"."revenue_reports'
+        db_table = 'arkevent.revenue_reports'
         indexes = [
             models.Index(fields=['organizer', 'start_date']),
             models.Index(fields=['period_type', 'start_date']),
@@ -147,7 +147,7 @@ class EventBoost(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'arkevent"."event_boosts'
+        db_table = 'arkevent.event_boosts'
         indexes = [
             models.Index(fields=['event', 'is_active']),
             models.Index(fields=['expires_at']),
@@ -183,7 +183,7 @@ class AnalyticsDailyMetric(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'arkevent"."analytics_daily_metrics'
+        db_table = 'arkevent.analytics_daily_metrics'
         indexes = [
             models.Index(fields=['event', 'metric_date']),
         ]

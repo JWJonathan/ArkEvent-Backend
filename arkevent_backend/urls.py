@@ -18,7 +18,7 @@ urlpatterns = [
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/wallets/', include('apps.wallets.urls')),
     path('api/subscriptions/', include('apps.subscriptions.urls')),
-    # path('api/finance/', include('apps.finance.urls')),
+    path('api/finance/', include('apps.finance.urls')),
 ]
 
 if settings.DEBUG:
