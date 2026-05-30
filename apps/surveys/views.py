@@ -4,6 +4,7 @@ from django.utils import timezone
 from .models import Survey, SurveyQuestion, SurveyAnswer
 from .serializers import SurveySerializer, SurveyQuestionSerializer, SurveyAnswerSerializer
 from apps.core.permissions import IsAdmin
+from apps.notifications.services import NotificationService
 
 class SurveyViewSet(viewsets.ModelViewSet):
     queryset = Survey.objects.all().order_by('-created_at')
@@ -15,7 +16,14 @@ class SurveyViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def perform_create(self, serializer):
-        serializer.save()
+        survey = serializer.save()
+        # Notify participants of the event
+        NotificationService.notify_all_participants(
+            event=survey.event,
+            title=f"Nouveau sondage pour {survey.event.title}",
+            body=f"Votre avis nous intéresse ! Veuillez répondre au sondage : {survey.title}",
+            metadata={'survey_id': str(survey.id)}
+        )
 
     def perform_update(self, serializer):
         serializer.save(updated_at=timezone.now())

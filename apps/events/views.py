@@ -197,8 +197,11 @@ from .serializers import (
     EventFaqSerializer, AnnouncementSerializer
 )
 from django.utils import timezone
+from apps.notifications.services import NotificationService
+
 
 class EventRelatedMixin:
+
     def filter_queryset_by_event_access(self, qs):
         user = self.request.user
         if user.is_staff:
@@ -370,9 +373,17 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         # Si le sender n'est pas fourni, on prend l'utilisateur connecté
         sender = serializer.validated_data.get('sender')
         if not sender:
-            serializer.save(event=event, sender=self.request.user)
+            announcement = serializer.save(event=event, sender=self.request.user)
         else:
-            serializer.save(event=event)
+            announcement = serializer.save(event=event)
+
+        # Notify participants of the event
+        NotificationService.notify_all_participants(
+            event=event,
+            title=f"Nouvelle annonce pour {event.title}",
+            body=announcement.content,
+            metadata={'announcement_id': str(announcement.id)}
+        )
 
     def perform_update(self, serializer):
         serializer.save()

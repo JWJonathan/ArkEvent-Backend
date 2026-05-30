@@ -12,6 +12,7 @@ from .serializers import (
 )
 from apps.core.permissions import IsAdmin, IsOrganizer
 from .services import TicketService
+from apps.notifications.services import NotificationService
 
 
 # ──────────────── TICKET TYPES ────────────────
@@ -224,6 +225,18 @@ class TicketTransferViewSet(viewsets.ModelViewSet):
     serializer_class = TicketTransferSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
+    def perform_create(self, serializer):
+        transfer = serializer.save(from_user=self.request.user)
+        if transfer.to_user:
+            # Notify the recipient that they have a pending transfer
+            NotificationService.send_notification(
+                transfer.to_user,
+                "Transfert de billet en attente",
+                f"{self.request.user.profile.full_name if self.request.user.profile else self.request.user.email} vous a envoyé un billet. Veuillez l'accepter.",
+                notification_type='push',
+                event=transfer.ticket.ticket_type.event
+            )
+
     def partial_update(self, request, *args, **kwargs):
         """Mise à jour partielle : principalement pour changer le statut."""
         instance = self.get_object()
@@ -235,4 +248,11 @@ class TicketTransferViewSet(viewsets.ModelViewSet):
         if new_status in ['accepted', 'declined', 'cancelled']:
             instance.completed_at = timezone.now()
         instance.save(update_fields=['status', 'completed_at'])
+
+        if new_status == 'accepted':
+            NotificationService.notify_ticket_transfer(instance.from_user, instance.to_user, instance.ticket)
+        elif new_status == 'declined':
+            # Optionnel: notifier le sender que c'est refusé
+            pass
+
         return Response(self.get_serializer(instance).data)

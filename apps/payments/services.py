@@ -15,6 +15,7 @@ from .models import (
 from apps.wallets.models import Wallet, WalletTransaction, Deposit, Withdrawal, Payout
 from apps.subscriptions.models import UserSubscription, SubscriptionPlan
 from apps.tickets.models import Ticket
+from apps.notifications.services import NotificationService
 
 
 # ============================================================================
@@ -318,6 +319,9 @@ class PaymentService:
             total_amount=ticket_sale.total_amount_paid,
             currency=currency,
         )
+
+        # Notify buyer
+        NotificationService.notify_ticket_purchase(buyer, ticket_sale)
         
         return ticket_sale
     
@@ -438,5 +442,8 @@ class PaymentService:
                 f'Ticket sale for event {event.id}',
                 str(order.id)
             )
+
+            # Notify buyer
+            NotificationService.notify_ticket_purchase(order.user, order)
 
             return order
