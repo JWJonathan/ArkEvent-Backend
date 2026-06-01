@@ -7,10 +7,10 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'notifications', NotificationLogViewSet)
 router.register(r'notification-settings', EventNotificationSettingViewSet)
 router.register(r'push-tokens', PushTokenViewSet)
 router.register(r'devices', UserDeviceViewSet)
+router.register(r'', NotificationLogViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -75,6 +75,9 @@ class SubscriptionService:
             currency=currency
         )
         
+        from apps.notifications.services import NotificationService
+        NotificationService.notify_payment_user(user, 'success', amount, currency)
+        
         return subscription
     
     @staticmethod
@@ -96,6 +99,9 @@ class SubscriptionService:
         
         subscription.renewal_date = new_renewal
         subscription.save(update_fields=['renewal_date'])
+        
+        from apps.notifications.services import NotificationService
+        NotificationService.notify_payment_user(user, 'sub_renewed')
         
         return subscription
     

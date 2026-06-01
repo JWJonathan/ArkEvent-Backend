@@ -28,11 +28,14 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             return Organization.objects.filter(deleted_at__isnull=True)
         user = self.request.user
         # Si l'utilisateur est admin, il peut voir toutes les organisations.
-        if user.is_staff:
+        if user.is_authenticated and user.is_staff:
             return Organization.objects.filter(deleted_at__isnull=True).order_by('-created_at')
-        # Sinon, on ne montre que les organisations créées par l'utilisateur.
-        # (La vue list() par défaut est pour getUserOrganizations)
-        return Organization.objects.filter(created_by=user, deleted_at__isnull=True).order_by('-created_at')
+        # Sinon, on ne montre que les organisations créées par l'utilisateur (s'il est authentifié).
+        if user.is_authenticated:
+            return Organization.objects.filter(created_by=user, deleted_at__isnull=True).order_by('-created_at')
+        
+        # Pour les utilisateurs anonymes, on retourne un queryset vide s'ils ne sont pas listés
+        return Organization.objects.none()
 
     def perform_create(self, serializer):
         data = serializer.validated_data

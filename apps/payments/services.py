@@ -428,6 +428,7 @@ class PaymentService:
                 ticket.status = 'sold'
                 ticket.reserved_until = None
                 ticket.save(update_fields=['status', 'reserved_until', 'updated_at'])
+                NotificationService.notify_ticket_status(order.user, ticket, 'generated')
 
             # 4. Credit organizer wallet
             event = order.event
@@ -442,8 +443,21 @@ class PaymentService:
                 f'Ticket sale for event {event.id}',
                 str(order.id)
             )
+            NotificationService.notify_payment_organizer(organization, 'revenue', order.total_amount)
 
             # Notify buyer
             NotificationService.notify_ticket_purchase(order.user, order)
+            NotificationService.notify_organizer_sales(event, 'sale')
+
+            # Check if first sale
+            if Ticket.objects.filter(ticket_type__event__organization__created_by=owner, status='sold').count() <= order.tickets.count():
+                NotificationService.notify_gamification(owner, 'first_sale')
+
+            # Check if sold out
+            sold_count = Ticket.objects.filter(ticket_type__event=event, status='sold').count()
+            if event.capacity and sold_count >= event.capacity:
+                NotificationService.notify_organizer_sales(event, 'sold_out')
+            elif event.capacity and sold_count >= event.capacity * 0.9:
+                NotificationService.notify_organizer_sales(event, 'low_stock')
 
             return order

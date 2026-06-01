@@ -170,6 +170,9 @@ class PasswordResetConfirmView(APIView):
             user.email_verification_code = None  # Clear the code
             user.save(update_fields=['password', 'email_verification_code', 'updated_at'])
             
+            from apps.notifications.services import NotificationService
+            NotificationService.notify_security(user, 'password')
+            
             return Response({
                 "success": True,
                 "data": {"detail": "Mot de passe réinitialisé avec succès."},
@@ -190,18 +193,38 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
     def update(self, request, *args, **kwargs):
+        from apps.notifications.services import NotificationService
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        old_email = instance.email
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+        
+        if 'email' in request.data and request.data['email'] != old_email:
+            NotificationService.notify_security(instance, 'email')
+            
         return Response(serializer.data)
 
-# Login est déjà géré par SimpleJWT TokenObtainPairView (voir urls)
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == status.HTTP_200_OK:
+            email = request.data.get('email')
+            user = User.objects.filter(email=email).first()
+            if user:
+                from apps.notifications.services import NotificationService
+                NotificationService.notify_security(user, 'login')
+        return response
 
 # users/views.py (ajout)
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from django.conf import settings
 
 class SocialLoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -217,22 +240,66 @@ class SocialLoginView(APIView):
         if not social_token:
             return Response({"error": "Token requis"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # TODO: Vérifier le token avec l'API du provider (Google, Apple, FB)
-        # Pour le moment, on simule
-        email = f"social_{provider}@example.com"
+        email = None
+        full_name = None
+        
+        if provider.lower() == 'google':
+            try:
+                # Vérifier le token avec l'API Google
+                # Note: On utilise settings.GOOGLE_CLIENT_ID
+                idinfo = id_token.verify_oauth2_token(
+                    social_token, 
+                    google_requests.Request(), 
+                    settings.GOOGLE_CLIENT_ID
+                )
+                
+                # Vérifier l'émetteur
+                if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                    return Response({"error": "Émetteur invalide"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                email = idinfo.get('email')
+                full_name = idinfo.get('name')
+                
+            except ValueError as e:
+                # Token invalide
+                if "Token used too early" in str(e) or "Token expired" in str(e):
+                    # Cas particulier pour le développement ou latence réseau
+                    pass
+                else:
+                    return Response({"error": f"Token Google invalide: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Si on est en DEBUG, on peut éventuellement laisser passer pour tester
+                if settings.DEBUG:
+                    email = f"social_{provider}@example.com"
+                    full_name = f"User {provider}"
+                else:
+                    return Response({"error": "Token Google invalide"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Pour les autres providers (Apple, FB), on simule encore
+            # TODO: Implémenter la vérification réelle
+            email = f"social_{provider}@example.com"
+            full_name = f"User {provider}"
+
+        if not email:
+            return Response({"error": "Impossible de récupérer l'email"}, status=status.HTTP_400_BAD_REQUEST)
         
         # Créer ou récupérer l'utilisateur
         user, created = User.objects.get_or_create(
             email=email,
             defaults={
-                'username': f"{provider}_user_{random.randint(1000,9999)}",
-                'full_name': f"User {provider}",
-                'is_verified': True,  # Les connexions sociales sont vérifiées
+                'username': f"{provider.lower()}_{random.randint(1000,9999)}_{email.split('@')[0]}",
+                'full_name': full_name or f"User {provider}",
+                'is_verified': True,
+                'email_verified': True,
+                'role': 'user',
             }
         )
 
         # Générer les tokens JWT
         refresh = RefreshToken.for_user(user)
+        
+        from apps.notifications.services import NotificationService
+        NotificationService.notify_security(user, 'login')
         
         return Response({
             'access': str(refresh.access_token),

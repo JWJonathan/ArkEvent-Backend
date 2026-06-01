@@ -43,7 +43,9 @@ class OrganizationMember(models.Model):
     STATUSES = [
         ('active', 'Active'),
         ('invited', 'Invited'),
+        ('pending', 'Pending'),
         ('suspended', 'Suspended'),
+        ('refused', 'Refused'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

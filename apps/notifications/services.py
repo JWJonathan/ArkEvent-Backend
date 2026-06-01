@@ -99,10 +99,20 @@ class NotificationService:
         cls.send_notification(sender, title_send, body_send, notification_type='push', event=ticket.ticket_type.event)
 
     @classmethod
-    def notify_event_reminder(cls, user, event):
-        title = f"Rappel : {event.title}"
-        body = f"Votre événement {event.title} commence bientôt. Préparez vos billets !"
-        cls.send_notification(user, title, body, notification_type='push', event=event)
+    def notify_event_reminder(cls, event, timeframe):
+        titles = {
+            '7d': f"Rappel : 7 jours avant {event.title}",
+            '24h': f"Rappel : 24 heures avant {event.title}",
+            '1h': f"Rappel : 1 heure avant {event.title}",
+        }
+        bodies = {
+            '7d': f"Plus que 7 jours avant {event.title} ! Préparez-vous pour l'expérience.",
+            '24h': f"J-1 ! L'événement {event.title} commence dans 24 heures. Avez-vous vos billets ?",
+            '1h': f"H-1 ! {event.title} commence dans une heure. Nous vous attendons !",
+        }
+        title = titles.get(timeframe, f"Rappel : {event.title}")
+        body = bodies.get(timeframe, f"Votre événement {event.title} commence bientôt.")
+        cls.notify_all_participants(event, title, body)
 
     @classmethod
     def notify_all_participants(cls, event, title, body, metadata=None):
@@ -132,12 +142,296 @@ class NotificationService:
         """
         title = "Félicitations ! Organisation créée"
         body = f"Vous avez créé l'organisation '{organization.name}'."
+        cls.send_notification(user, title, body, notification_type='push', metadata={'organization_id': str(organization.id)})
+        cls.send_notification(user, title, body, notification_type='email', metadata={'organization_id': str(organization.id)})
+
+    # 🎉 Événements
+    @classmethod
+    def notify_event_update(cls, event, change_type):
+        titles = {
+            'time': f"Modification de l'heure : {event.title}",
+            'location': f"Modification du lieu : {event.title}",
+            'schedule': f"Changement du programme : {event.title}",
+            'cancelled': f"Événement annulé : {event.title}",
+            'started': f"L'événement commence maintenant : {event.title}",
+        }
+        bodies = {
+            'time': f"L'heure de l'événement {event.title} a été modifiée. Consultez les nouveaux horaires.",
+            'location': f"Le lieu de l'événement {event.title} a changé. Vérifiez la nouvelle adresse.",
+            'schedule': f"Le programme de l'événement {event.title} a été mis à jour.",
+            'cancelled': f"Nous sommes au regret de vous annoncer que l'événement {event.title} est annulé.",
+            'started': f"C'est parti ! L'événement {event.title} commence dès maintenant. Rejoignez-nous !",
+        }
+        title = titles.get(change_type, f"Mise à jour : {event.title}")
+        body = bodies.get(change_type, f"Il y a du nouveau pour l'événement {event.title}.")
+        cls.notify_all_participants(event, title, body)
+
+    @classmethod
+    def notify_during_event(cls, event, notify_type, extra_data=None):
+        titles = {
+            'checkin': "Check-in disponible",
+            'activity': "Une activité commence bientôt",
+            'organizer_msg': "Nouveau message des organisateurs",
+            'photo': "Nouvelle photo ajoutée",
+        }
+        bodies = {
+            'checkin': f"Le check-in pour {event.title} est maintenant ouvert. Présentez votre billet !",
+            'activity': f"Une activité de l'événement {event.title} va commencer dans quelques minutes.",
+            'organizer_msg': f"Les organisateurs de {event.title} ont envoyé un nouveau message.",
+            'photo': f"De nouvelles photos ont été ajoutées à l'album de {event.title}.",
+        }
+        title = titles.get(notify_type, event.title)
+        body = bodies.get(notify_type, "")
+        cls.notify_all_participants(event, title, body, metadata=extra_data)
+
+    @classmethod
+    def notify_post_event(cls, event, notify_type):
+        titles = {
+            'thanks': f"Merci d'avoir participé à {event.title}",
+            'review': "Laissez une évaluation",
+            'certificate': "Téléchargez votre certificat",
+            'photos': "Consultez les photos de l'événement",
+        }
+        bodies = {
+            'thanks': f"Merci de votre présence à {event.title}. Nous espérons que vous avez apprécié !",
+            'review': f"Votre avis compte ! Donnez une note à l'événement {event.title}.",
+            'certificate': f"Votre certificat de participation pour {event.title} est prêt.",
+            'photos': f"Les photos souvenirs de {event.title} sont disponibles.",
+        }
+        title = titles.get(notify_type, event.title)
+        body = bodies.get(notify_type, "")
+        cls.notify_all_participants(event, title, body)
+
+    # 👥 Organisations
+    @classmethod
+    def notify_member_invite(cls, organization, invited_user, inviter):
+        title = f"Invitation : {organization.name}"
+        body = f"{inviter.profile.full_name if hasattr(inviter, 'profile') and inviter.profile else inviter.email} vous a invité à rejoindre '{organization.name}'."
+        cls.send_notification(invited_user, title, body, metadata={'organization_id': str(organization.id)})
+
+    @classmethod
+    def notify_membership_status(cls, organization, user, status):
+        titles = {
+            'accepted': "Demande acceptée",
+            'refused': "Demande refusée",
+            'role_assigned': "Nouveau rôle attribué",
+        }
+        bodies = {
+            'accepted': f"Votre demande pour rejoindre '{organization.name}' a été acceptée. Bienvenue !",
+            'refused': f"Désolé, votre demande pour rejoindre '{organization.name}' n'a pas été retenue.",
+            'role_assigned': f"Un nouveau rôle vous a été attribué au sein de '{organization.name}'.",
+        }
+        title = titles.get(status, organization.name)
+        body = bodies.get(status, "")
+        cls.send_notification(user, title, body, metadata={'organization_id': str(organization.id)})
+
+    # 🎫 Billetterie
+    @classmethod
+    def notify_ticket_status(cls, user, ticket, status):
+        titles = {
+            'generated': "Votre ticket est prêt",
+            'refunded': "Ticket remboursé",
+            'failed': "Paiement échoué",
+        }
+        bodies = {
+            'generated': f"Le ticket pour {ticket.ticket_type.event.title} a été généré avec succès.",
+            'refunded': f"Votre ticket pour {ticket.ticket_type.event.title} a été remboursé.",
+            'failed': f"Le paiement pour votre ticket à l'événement {ticket.ticket_type.event.title} a échoué.",
+        }
+        title = titles.get(status, "Mise à jour de ticket")
+        body = bodies.get(status, "")
+        cls.send_notification(user, title, body, event=ticket.ticket_type.event)
+
+    @classmethod
+    def notify_organizer_sales(cls, event, notify_type, extra_data=None):
+        organization = event.organization
+        admins = organization.members.filter(org_role__in=['owner', 'admin']).select_related('user')
         
-        # Assuming organization has a 'name' attribute and can act as an event/metadata source
-        # We'll use the organization object as metadata and potentially the event if it's linked.
-        # For simplicity, we'll treat it as a general notification event for now.
+        titles = {
+            'sale': "Nouveau ticket vendu",
+            'milestone': "Vente importante atteinte",
+            'low_stock': "Stock de tickets faible",
+            'sold_out': "Tous les tickets sont vendus",
+        }
+        bodies = {
+            'sale': f"Un nouveau ticket a été vendu pour {event.title}.",
+            'milestone': f"Félicitations ! Un jalon de vente a été atteint pour {event.title}.",
+            'low_stock': f"Attention : le stock de tickets pour {event.title} est presque épuisé.",
+            'sold_out': f"Succès ! Tous les tickets pour {event.title} ont été vendus.",
+        }
+        title = titles.get(notify_type, event.title)
+        body = bodies.get(notify_type, "")
         
-        # Send Push
-        cls.send_notification(user, title, body, notification_type='push', event=None, metadata={'organization': organization})
-        # Send Email
-        cls.send_notification(user, title, body, notification_type='email', event=None, metadata={'organization': organization})
+        for admin in admins:
+            cls.send_notification(admin.user, title, body, event=event, metadata=extra_data)
+
+    # 💳 Paiements & Abonnements
+    @classmethod
+    def notify_payment_user(cls, user, notify_type, amount=None, currency="HTG"):
+        titles = {
+            'success': "Paiement réussi",
+            'failed': "Paiement échoué",
+            'invoice': "Facture disponible",
+            'sub_renewed': "Abonnement renouvelé",
+            'sub_expiring': "Abonnement expirera bientôt",
+            'withdrawal_approved': "Retrait approuvé",
+            'withdrawal_refused': "Retrait refusé",
+        }
+        bodies = {
+            'success': f"Votre paiement de {amount} {currency} a été effectué avec succès.",
+            'failed': f"Le paiement de {amount} {currency} a échoué. Veuillez vérifier vos informations.",
+            'invoice': "Une nouvelle facture est disponible dans votre espace personnel.",
+            'sub_renewed': "Votre abonnement a été renouvelé automatiquement.",
+            'sub_expiring': "Votre abonnement arrive à échéance prochainement. Pensez à le renouveler.",
+            'withdrawal_approved': f"Votre retrait de {amount} {currency} a été approuvé et envoyé.",
+            'withdrawal_refused': f"Votre retrait de {amount} {currency} a été refusé.",
+        }
+        title = titles.get(notify_type, "Paiement")
+        body = bodies.get(notify_type, "")
+        cls.send_notification(user, title, body)
+
+    # ⭐ Réseau social
+    @classmethod
+    def notify_social_interaction(cls, user, interaction_type, actor, event=None):
+        actor_name = actor.profile.full_name if hasattr(actor, 'profile') and actor.profile else actor.email
+        titles = {
+            'follow': "Nouveau follower",
+            'like': "Événement aimé",
+            'share': "Événement partagé",
+            'comment': "Nouveau commentaire",
+            'reply': "Réponse à votre commentaire",
+        }
+        bodies = {
+            'follow': f"{actor_name} a commencé à vous suivre.",
+            'like': f"{actor_name} a aimé votre événement {event.title if event else ''}.",
+            'share': f"{actor_name} a partagé votre événement {event.title if event else ''}.",
+            'comment': f"{actor_name} a commenté votre événement {event.title if event else ''}.",
+            'reply': f"{actor_name} a répondu à votre commentaire.",
+        }
+        title = titles.get(interaction_type, "Nouvelle interaction")
+        body = bodies.get(interaction_type, "")
+        cls.send_notification(user, title, body, event=event)
+
+    @classmethod
+    def notify_messaging(cls, user, msg_type, sender, extra_data=None):
+        sender_name = sender.profile.full_name if hasattr(sender, 'profile') and sender.profile else sender.email
+        titles = {
+            'private': "Nouveau message privé",
+            'group': "Nouveau message de groupe",
+            'mention': "Mention dans une conversation",
+        }
+        bodies = {
+            'private': f"Vous avez reçu un message de {sender_name}.",
+            'group': f"Nouveau message dans le groupe de la part de {sender_name}.",
+            'mention': f"{sender_name} vous a mentionné dans une conversation.",
+        }
+        title = titles.get(msg_type, "Message")
+        body = bodies.get(msg_type, "")
+        cls.send_notification(user, title, body, metadata=extra_data)
+
+    # 🏆 Engagement & Gamification
+    @classmethod
+    def notify_gamification(cls, user, notify_type, label=None):
+        titles = {
+            'first_event': "Premier événement créé !",
+            'first_sale': "Premier ticket vendu !",
+            'event_completed': "Événement complété !",
+            'badge': "Nouveau badge obtenu",
+            'level': "Nouveau niveau atteint",
+            'goal': "Objectif mensuel atteint",
+        }
+        bodies = {
+            'first_event': "Félicitations ! Vous venez de créer votre premier événement sur ArkEvent.",
+            'first_sale': "Bravo ! Vous avez réalisé votre première vente.",
+            'event_completed': "Félicitations pour la réussite de votre événement !",
+            'badge': f"Vous avez débloqué le badge : {label}.",
+            'level': f"Vous êtes passé au niveau {label} !",
+            'goal': "Super ! Vous avez atteint votre objectif du mois.",
+        }
+        title = titles.get(notify_type, "Succès !")
+        body = bodies.get(notify_type, "")
+        cls.send_notification(user, title, body)
+
+    # 📢 Marketing
+    @classmethod
+    def notify_marketing(cls, user, notify_type, extra_data=None):
+        titles = {
+            'popular': "Événements populaires près de vous",
+            'interests': "Événements correspondant à vos intérêts",
+            'weekly': "Nouveaux événements cette semaine",
+            'promo': "Offre spéciale",
+            'code': "Code promo disponible",
+        }
+        bodies = {
+            'popular': "Découvrez les événements qui font le buzz autour de vous.",
+            'interests': "Nous avons trouvé des événements qui pourraient vous plaire.",
+            'weekly': "Voici les nouveautés de la semaine à ne pas manquer.",
+            'promo': "Profitez d'une réduction limitée sur votre prochain achat !",
+            'code': f"Utilisez le code {extra_data.get('code') if extra_data else ''} pour votre prochain billet.",
+        }
+        title = titles.get(notify_type, "À découvrir")
+        body = bodies.get(notify_type, "")
+        cls.send_notification(user, title, body, metadata=extra_data)
+
+    # 🔒 Sécurité
+    @classmethod
+    def notify_security(cls, user, notify_type, extra_data=None):
+        titles = {
+            'login': "Nouvelle connexion détectée",
+            'device': "Connexion depuis un nouvel appareil",
+            'password': "Changement de mot de passe",
+            'email': "Adresse email modifiée",
+            'failed_login': "Tentative de connexion échouée",
+            '2fa': "Authentification à deux facteurs activée",
+        }
+        bodies = {
+            'login': "Une nouvelle connexion a été effectuée sur votre compte.",
+            'device': "Votre compte a été accédé depuis un nouvel appareil.",
+            'password': "Le mot de passe de votre compte a été modifié avec succès.",
+            'email': "Votre adresse email de contact a été mise à jour.",
+            'failed_login': "Plusieurs tentatives de connexion ont échoué sur votre compte.",
+            '2fa': "La sécurité 2FA est maintenant active sur votre compte.",
+        }
+        title = titles.get(notify_type, "Sécurité")
+        body = bodies.get(notify_type, "")
+        cls.send_notification(user, title, body, metadata=extra_data)
+
+    # 🛠 Système
+    @classmethod
+    def notify_system(cls, user, notify_type, extra_data=None):
+        titles = {
+            'maintenance': "Maintenance programmée",
+            'version': "Nouvelle version disponible",
+            'feature': "Fonctionnalité ajoutée",
+            'incident': "Incident résolu",
+        }
+        bodies = {
+            'maintenance': "Une maintenance est prévue pour améliorer nos services.",
+            'version': "Une mise à jour d'ArkEvent est disponible. Découvrez les nouveautés !",
+            'feature': "Nous avons ajouté une nouvelle fonctionnalité rien que pour vous.",
+            'incident': "Le problème technique a été résolu. Merci de votre patience.",
+        }
+        title = titles.get(notify_type, "Système")
+        body = bodies.get(notify_type, "")
+        cls.send_notification(user, title, body, metadata=extra_data)
+
+    # 💎 Premium
+    @classmethod
+    def notify_premium(cls, user, notify_type):
+        titles = {
+            'first_org': "Créez votre première organisation",
+            'unlimited': "Passez à Premium",
+            'limit_reached': "Limite d'événements atteinte",
+            'stats': "Débloquez les statistiques avancées",
+            'campaigns': "Débloquez les campagnes marketing",
+        }
+        bodies = {
+            'first_org': "Commencez dès maintenant en créant votre première organisation.",
+            'unlimited': "Passez au plan Premium pour créer des événements en illimité !",
+            'limit_reached': "Vous avez atteint votre limite. Passez à Premium pour continuer.",
+            'stats': "Prenez de meilleures décisions avec nos analyses détaillées.",
+            'campaigns': "Boostez votre visibilité avec les outils marketing Premium.",
+        }
+        title = titles.get(notify_type, "ArkEvent Premium")
+        body = bodies.get(notify_type, "")
+        cls.send_notification(user, title, body)

@@ -11,6 +11,7 @@ class OrganizationService:
         data contient les champs : name, type, short_description, email, phone, website, logo, cover
         Retourne l'organisation créée.
         """
+        from apps.notifications.services import NotificationService
         with transaction.atomic():
             org = Organization.objects.create(
                 name=data['name'],
@@ -29,6 +30,7 @@ class OrganizationService:
                 org_role='owner',
                 status='active',
             )
+            NotificationService.notify_organization_created(user, org)
             return org
 
     @staticmethod
@@ -89,10 +91,12 @@ class MemberService:
 
     @staticmethod
     def add_member(org, user, role='viewer', status='active', invited_by=None):
+        from apps.notifications.services import NotificationService
         # Vérifier si déjà membre
         if OrganizationMember.objects.filter(organization=org, user=user).exists():
             raise ValueError('Cet utilisateur est déjà membre de l’organisation.')
-        return OrganizationMember.objects.create(
+
+        member = OrganizationMember.objects.create(
             organization=org,
             user=user,
             org_role=role,
@@ -100,14 +104,42 @@ class MemberService:
             invited_by=invited_by
         )
 
+        if status == 'invited':
+            NotificationService.notify_member_invite(org, user, invited_by)
+        elif status == 'pending':
+            NotificationService.notify_org_admins(org, 'new_request', user)
+        elif status == 'active':
+            NotificationService.notify_org_admins(org, 'new_member', user)
+
+        return member
+
     @staticmethod
     def update_member(member, role=None, status=None):
+        from apps.notifications.services import NotificationService
+        old_status = member.status
+        old_role = member.org_role
+
         if role:
             member.org_role = role
         if status:
             member.status = status
         member.save(update_fields=['org_role', 'status', 'updated_at'])
 
+        if status and status != old_status:
+            if status == 'active':
+                NotificationService.notify_membership_status(member.organization, member.user, 'accepted')
+                NotificationService.notify_org_admins(member.organization, 'new_member', member.user)
+            elif status == 'refused':
+                NotificationService.notify_membership_status(member.organization, member.user, 'refused')
+
+        if role and role != old_role:
+            NotificationService.notify_membership_status(member.organization, member.user, 'role_assigned')
+            NotificationService.notify_org_admins(member.organization, 'role_modified', member.user)
+
     @staticmethod
     def remove_member(member):
+        from apps.notifications.services import NotificationService
+        org = member.organization
+        user = member.user
         member.delete()
+        NotificationService.notify_org_admins(org, 'member_left', user)

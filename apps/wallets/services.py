@@ -154,6 +154,7 @@ class WithdrawalService:
         Approve and process withdrawal.
         Moves funds from pending to completion.
         """
+        from apps.notifications.services import NotificationService
         if withdrawal.status != 'pending':
             raise ValueError(f"Cannot approve withdrawal with status {withdrawal.status}")
         
@@ -183,6 +184,10 @@ class WithdrawalService:
             completed_at=timezone.now()
         )
         
+        # Notify user (if they are part of an organization, it might be an organizer notification)
+        # For simplicity, notify the wallet owner
+        NotificationService.notify_payment_user(wallet.user, 'withdrawal_approved', withdrawal.net_amount, withdrawal.currency)
+        
         return wallet_transaction
     
     @staticmethod
@@ -191,6 +196,7 @@ class WithdrawalService:
         """
         Reject withdrawal and refund to available balance.
         """
+        from apps.notifications.services import NotificationService
         if withdrawal.status != 'pending':
             raise ValueError(f"Cannot reject withdrawal with status {withdrawal.status}")
         
@@ -207,6 +213,8 @@ class WithdrawalService:
         withdrawal.rejection_reason = rejection_reason
         withdrawal.completed_at = timezone.now()
         withdrawal.save(update_fields=['status', 'rejection_reason', 'completed_at'])
+        
+        NotificationService.notify_payment_user(wallet.user, 'withdrawal_refused', withdrawal.requested_amount, withdrawal.currency)
 
 
 class PayoutService:

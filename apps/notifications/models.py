@@ -3,6 +3,7 @@ from django.conf import settings
 import uuid
 
 class NotificationLog(models.Model):
+    """Modèle pour enregistrer les notifications envoyées aux utilisateurs, avec leur statut de lecture."""
     TYPES = [('push','Push'), ('email','Email'), ('sms','SMS')]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column='user_id', related_name='notification_logs')

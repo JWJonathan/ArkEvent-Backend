@@ -262,11 +262,16 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        from apps.notifications.services import NotificationService
         # On vérifie que l'utilisateur n'a pas déjà laissé un avis
         event = serializer.validated_data['event']
         if Review.objects.filter(user=self.request.user, event=event, deleted_at__isnull=True).exists():
             raise serializers.ValidationError("Vous avez déjà donné votre avis pour cet événement.")
-        serializer.save(user=self.request.user)
+        review = serializer.save(user=self.request.user)
+        
+        # Notify organizer
+        organizer = event.created_by
+        NotificationService.notify_social_interaction(organizer, 'comment', self.request.user, event)
 
     def perform_update(self, serializer):
         # Vérifie que l'utilisateur est l'auteur de l'avis
@@ -284,11 +289,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='like')
     def like(self, request, pk=None):
+        from apps.notifications.services import NotificationService
         review = self.get_object()
         like, created = ReviewLike.objects.get_or_create(review=review, user=request.user)
         if created:
             review.likes_count += 1
             review.save(update_fields=['likes_count'])
+            # Notify review author
+            NotificationService.notify_social_interaction(review.user, 'like', request.user, review.event)
             return Response({'status': 'liked'})
         return Response({'status': 'already_liked'})
 

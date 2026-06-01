@@ -167,6 +167,9 @@ PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID', default='')
 PAYPAL_CLIENT_SECRET = env('PAYPAL_CLIENT_SECRET', default='')
 PAYPAL_WEBHOOK_ID = env('PAYPAL_WEBHOOK_ID', default='')
 
+# Social Login Settings
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
+
 
 INSTALLED_APPS += [
     'rest_framework_simplejwt',
@@ -227,6 +230,14 @@ CELERY_BEAT_SCHEDULE = {
     'release-expired-reservations-every-5-minutes': {
         'task': 'apps.tickets.tasks.release_expired_reservations',
         'schedule': crontab(minute='*/5'),
+    },
+    'schedule-event-reminders-every-hour': {
+        'task': 'apps.notifications.tasks.schedule_event_reminders',
+        'schedule': crontab(minute=0), # Every hour at minute 0
+    },
+    'schedule-post-event-notifications-daily': {
+        'task': 'apps.notifications.tasks.schedule_post_event_notifications',
+        'schedule': crontab(hour=10, minute=0), # Every day at 10 AM
     },
 }
 

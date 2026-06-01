@@ -206,11 +206,20 @@ class EventRelatedMixin:
         user = self.request.user
         if user.is_staff:
             return qs
+        
         from django.db.models import Q
-        return qs.filter(
-            Q(event__visibility='public', event__status='published') |
-            Q(event__organizers__user=user)
-        ).distinct()
+        
+        # Filtre de base : événements publics publiés
+        public_events = Q(event__visibility='public', event__status='published')
+        
+        # Si utilisateur authentifié, ajouter accès via organisation
+        if user.is_authenticated:
+            return qs.filter(
+                public_events | Q(event__organizers__user=user)
+            ).distinct()
+            
+        # Si anonyme, ne retourner que les publics
+        return qs.filter(public_events).distinct()
 
 # ──────────────────── SESSIONS ────────────────────
 class EventSessionViewSet(viewsets.ModelViewSet, EventRelatedMixin):
@@ -293,7 +302,10 @@ class EventMediaViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
     def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
+        from apps.notifications.services import NotificationService
+        media = serializer.save(uploaded_by=self.request.user)
+        if media.media_type == 'image':
+            NotificationService.notify_during_event(media.event, 'photo')
 
     def perform_update(self, serializer):
         serializer.save()
@@ -398,4 +410,9 @@ class EventShareViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]  # seuls les admins peuvent lister (à ajuster)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        from apps.notifications.services import NotificationService
+        share = serializer.save(user=self.request.user)
+        # Notify organizer
+        event = share.event
+        organizer = event.created_by
+        NotificationService.notify_social_interaction(organizer, 'share', self.request.user, event)

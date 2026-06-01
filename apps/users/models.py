@@ -10,7 +10,7 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('The Email must be set')
         email = self.normalize_email(email)
-        user = self.model(id=uuid.uuid4(), email=email, **extra_fields)
+        user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -49,7 +49,7 @@ class User(AbstractUser):
         ('prefer_not_to_say', 'Prefer not to say')
     ]
 
-    id = models.UUIDField(primary_key=True, editable=False, unique=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
     email = models.EmailField(unique=True, blank=False)
     username = models.CharField(max_length=150, blank=True, null=True, unique=True)
 
