@@ -27,18 +27,15 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
     """
     queryset = TicketType.objects.filter(deleted_at__isnull=True).order_by('-created_at')
     serializer_class = TicketTypeSerializer
-    permission_classes = [permissions.IsAuthenticated]  # la vue ajuste selon l'action
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
-        if user.is_staff:
-            pass # Keep all
-        else:
-            qs = qs.filter(
-                Q(event__visibility='public', event__status='published') |
-                Q(event__organizers__user=user)
-            )
+        
+        # Filtres basés sur la visibilité publique pour les non-auth ou non-staff
+        if not user.is_authenticated or not user.is_staff:
+            qs = qs.filter(event__visibility='public', event__status='published')
         
         event_id = self.request.query_params.get('event_id')
         if event_id:

@@ -13,9 +13,6 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     serializer_class = OrganizationSerializer
 
     def get_permissions(self):
-        if self.action == 'list':
-            # /organizations/ : retourne selon l'utilisateur (créées ou toutes si admin)
-            return [permissions.IsAuthenticated()]
         if self.action in ['create', 'my_organizations', 'user_organizations']:
             return [permissions.IsAuthenticated()]
         if self.action in ['update', 'partial_update', 'destroy']:
@@ -23,19 +20,22 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
 
     def get_queryset(self):
-        if self.action == 'list' and not self.request.user.is_staff:
-            # RLS : tout le monde peut voir les organisations non supprimées
-            return Organization.objects.filter(deleted_at__isnull=True)
-        user = self.request.user
-        # Si l'utilisateur est admin, il peut voir toutes les organisations.
-        if user.is_authenticated and user.is_staff:
-            return Organization.objects.filter(deleted_at__isnull=True).order_by('-created_at')
-        # Sinon, on ne montre que les organisations créées par l'utilisateur (s'il est authentifié).
-        if user.is_authenticated:
-            return Organization.objects.filter(created_by=user, deleted_at__isnull=True).order_by('-created_at')
+        # RLS : tout le monde peut voir les organisations non supprimées
+        qs = Organization.objects.filter(deleted_at__isnull=True)
         
-        # Pour les utilisateurs anonymes, on retourne un queryset vide s'ils ne sont pas listés
-        return Organization.objects.none()
+        # Si admin ou liste simple, on peut potentiellement tout voir
+        if self.action == 'list':
+            return qs.order_by('-created_at')
+            
+        user = self.request.user
+        
+        # Si l'utilisateur est admin, il peut voir tout
+        if user.is_authenticated and user.is_staff:
+            return qs.order_by('-created_at')
+            
+        # Sinon, pour les actions de détail, on restreint selon la visibilité
+        # (À ajuster selon la logique métier précise si nécessaire)
+        return qs
 
     def perform_create(self, serializer):
         data = serializer.validated_data

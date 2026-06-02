@@ -32,3 +32,5 @@ media/
 Thumbs.db   
 # Fichiers de sécurité
 .env    
+
+.qwen

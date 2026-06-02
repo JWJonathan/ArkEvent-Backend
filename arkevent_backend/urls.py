@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/wallets/', include('apps.wallets.urls')),
     path('api/subscriptions/', include('apps.subscriptions.urls')),
     path('api/finance/', include('apps.finance.urls')),
+    path('api/marketplace/', include('apps.marketplace.urls')),
 ]
 
 if settings.DEBUG:
