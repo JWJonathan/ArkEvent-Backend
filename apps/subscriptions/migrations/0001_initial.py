@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
                 ('renewal_date', models.DateField()),
                 ('auto_renew', models.BooleanField(default=True)),
                 ('amount_paid', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('currency', models.CharField(default='HTG', max_length=3)),
+                ('currency', models.CharField(default='USD', max_length=3)),
                 ('cancelled_at', models.DateTimeField(blank=True, null=True)),
                 ('cancellation_reason', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),

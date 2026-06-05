@@ -67,7 +67,7 @@ class DepositViewSet(viewsets.ViewSet):
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
         
         amount = request.data.get('amount')
-        currency = request.data.get('currency', 'HTG')
+        currency = request.data.get('currency', 'USD')
         deposit_method = request.data.get('deposit_method')
         
         try:
@@ -82,6 +82,61 @@ class DepositViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
+    @action(detail=True, methods=['post'], url_path='paypal-deposit')
+    def paypal_deposit(self, request, pk=None):
+        """Initiate PayPal payment for a deposit."""
+        from apps.payments.providers.paypal import PayPalProvider
+        from .models import Deposit
+        
+        try:
+            deposit = Deposit.objects.get(id=pk, wallet__user=request.user)
+            if deposit.status != 'pending':
+                return Response({'error': 'Ce dépôt n\'est plus en attente.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            provider = PayPalProvider()
+            return_url = request.data.get('return_url')
+            cancel_url = request.data.get('cancel_url')
+            
+            session_data = provider.create_payment_session(deposit, user=request.user, return_url=return_url, cancel_url=cancel_url)
+            
+            if session_data:
+                return Response({
+                    'approval_url': session_data['approval_url'],
+                    'payment_id': session_data['payment_id'],
+                    'deposit_id': deposit.id
+                })
+            return Response({'error': 'Impossible de créer la session PayPal.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Deposit.DoesNotExist:
+            return Response({'error': 'Dépôt introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['post'], url_path='verify-iap')
+    def verify_iap(self, request, pk=None):
+        """Verify Google Play IAP for a wallet deposit."""
+        from .models import Deposit
+        try:
+            deposit = Deposit.objects.get(id=pk, wallet__user=request.user)
+            token = request.data.get('purchase_token')
+            product_id = request.data.get('product_id')
+            package_name = request.data.get('package_name', "com.arkevent.app")
+
+            if not token or not product_id:
+                return Response({'error': 'purchase_token et product_id sont requis.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            result = verify_google_purchase(package_name, product_id, token, is_subscription=False)
+            
+            if result.get('purchaseState') == 0:
+                DepositService.confirm_deposit(
+                    deposit=deposit,
+                    transaction_id=token,
+                    provider_metadata=result
+                )
+                return Response({'status': 'success', 'deposit_id': deposit.id})
+            return Response({'error': 'L\'achat n\'est pas validé par Google Play.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Deposit.DoesNotExist:
+            return Response({'error': 'Dépôt introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['get'], url_path='my-deposits', permission_classes=[permissions.IsAuthenticated])
     def my_deposits(self, request):
         """Get user's deposits."""

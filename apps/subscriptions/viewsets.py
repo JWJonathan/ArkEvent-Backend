@@ -8,12 +8,14 @@ from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
+from datetime import datetime
 from .models import SubscriptionPlan, UserSubscription, PremiumFeature, UserPremiumFeature
 from .serializers import (
     SubscriptionPlanSerializer, UserSubscriptionSerializer,
     PremiumFeatureSerializer, UserPremiumFeatureSerializer
 )
 from .services import SubscriptionService, PremiumFeatureService, SubscriptionAnalyticsService
+from .iap_service import verify_google_purchase
 from apps.core.permissions import IsSubscriptionOwner
 
 
@@ -86,8 +88,8 @@ class UserSubscriptionViewSet(viewsets.ViewSet):
     def subscribe(self, request):
         """Subscribe user to a plan."""
         plan_tier = request.data.get('plan_tier')
-        currency = request.data.get('currency', 'HTG')
-        
+        currency = request.data.get('currency', 'USD')
+
         try:
             plan = SubscriptionPlan.objects.get(tier=plan_tier, is_active=True)
             subscription = SubscriptionService.subscribe_user(
@@ -99,8 +101,41 @@ class UserSubscriptionViewSet(viewsets.ViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except SubscriptionPlan.DoesNotExist:
             return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['post'], url_path='paypal-subscribe', permission_classes=[permissions.IsAuthenticated])
+    def paypal_subscribe(self, request):
+        """Initiate PayPal subscription payment."""
+        from apps.payments.providers.paypal import PayPalProvider
+        from django.conf import settings
+
+        plan_tier = request.data.get('plan_tier')
+        if not plan_tier:
+            return Response({'error': 'plan_tier is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            plan = SubscriptionPlan.objects.get(tier=plan_tier, is_active=True)
+            provider = PayPalProvider()
+
+            # Use specific return/cancel URLs if provided by Flutter
+            return_url = request.data.get('return_url')
+            cancel_url = request.data.get('cancel_url')
+
+            session_data = provider.create_payment_session(plan, user=request.user, return_url=return_url, cancel_url=cancel_url)
+
+            if session_data:
+                return Response({
+                    'approval_url': session_data['approval_url'],
+                    'payment_id': session_data['payment_id'],
+                    'plan_tier': plan_tier
+                })
+            return Response({'error': 'Could not create PayPal session'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except SubscriptionPlan.DoesNotExist:
+            return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], url_path='verify-iap', permission_classes=[permissions.IsAuthenticated])
     
     @action(detail=False, methods=['post'], url_path='cancel', permission_classes=[permissions.IsAuthenticated])
     def cancel(self, request):
@@ -229,7 +264,7 @@ class UserPremiumFeatureViewSet(viewsets.ViewSet):
         """Purchase a premium feature."""
         feature_id = request.data.get('feature_id')
         event_id = request.data.get('event_id')
-        currency = request.data.get('currency', 'HTG')
+        currency = request.data.get('currency', 'USD')
         
         try:
             feature = PremiumFeature.objects.get(id=feature_id)

@@ -12,6 +12,109 @@ from datetime import datetime, timedelta
 from .models import Wallet, WalletTransaction, Deposit, Withdrawal, Payout
 
 
+class WalletService:
+    """
+    Consolidated service for core wallet balance operations.
+    Source of truth for all wallet-related credits, debits, and balance checks.
+    """
+    
+    @staticmethod
+    def get_or_create_wallet(user) -> Wallet:
+        """Get or create wallet for user."""
+        wallet, _ = Wallet.objects.get_or_create(user=user)
+        return wallet
+
+    @staticmethod
+    @transaction.atomic
+    def credit_wallet(
+        wallet: Wallet,
+        amount: Decimal,
+        transaction_type: str,
+        description: str = '',
+        reference_id: str = '',
+        related_ticket_sale = None
+    ) -> WalletTransaction:
+        """
+        Credit wallet (add funds).
+        Updates available balance and creates immutable transaction record.
+        """
+        if wallet.is_frozen:
+            raise ValueError(f"Wallet is frozen. Reason: {wallet.freeze_reason}")
+        
+        wallet.available_balance += amount
+        wallet.save(update_fields=['available_balance', 'updated_at'])
+        
+        # Create immutable transaction record
+        wallet_transaction = WalletTransaction.objects.create(
+            wallet=wallet,
+            transaction_type=transaction_type,
+            amount=amount,
+            currency=wallet.currency,
+            balance_after=wallet.available_balance,
+            description=description,
+            reference_id=reference_id,
+            related_ticket_sale=related_ticket_sale,
+            status='completed',
+            completed_at=timezone.now()
+        )
+        
+        return wallet_transaction
+
+    @staticmethod
+    @transaction.atomic
+    def debit_wallet(
+        wallet: Wallet,
+        amount: Decimal,
+        transaction_type: str,
+        description: str = '',
+        reference_id: str = ''
+    ) -> WalletTransaction:
+        """
+        Debit wallet (remove funds).
+        Validates sufficient balance before debit.
+        """
+        if wallet.is_frozen:
+            raise ValueError(f"Wallet is frozen. Reason: {wallet.freeze_reason}")
+        
+        if wallet.available_balance < amount:
+            raise ValueError(
+                f"Insufficient balance. Available: {wallet.available_balance}, "
+                f"Requested: {amount}"
+            )
+        
+        wallet.available_balance -= amount
+        wallet.save(update_fields=['available_balance', 'updated_at'])
+        
+        # Create immutable transaction record
+        wallet_transaction = WalletTransaction.objects.create(
+            wallet=wallet,
+            transaction_type=transaction_type,
+            amount=amount,
+            currency=wallet.currency,
+            balance_after=wallet.available_balance,
+            description=description,
+            reference_id=reference_id,
+            status='completed',
+            completed_at=timezone.now()
+        )
+        
+        return wallet_transaction
+
+    @staticmethod
+    def freeze_wallet(wallet: Wallet, reason: str):
+        """Freeze wallet during disputes or investigations."""
+        wallet.is_frozen = True
+        wallet.freeze_reason = reason
+        wallet.save(update_fields=['is_frozen', 'freeze_reason'])
+
+    @staticmethod
+    def unfreeze_wallet(wallet: Wallet):
+        """Unfreeze wallet after resolution."""
+        wallet.is_frozen = False
+        wallet.freeze_reason = ''
+        wallet.save(update_fields=['is_frozen', 'freeze_reason'])
+
+
 class DepositService:
     """Manages deposit operations into user wallets."""
     
@@ -91,7 +194,7 @@ class DepositService:
 class WithdrawalService:
     """Manages withdrawal operations from user wallets."""
     
-    WITHDRAWAL_FEE_INSTANT_HTG = Decimal('100')  # 100 HTG for instant withdrawal
+    WITHDRAWAL_FEE_INSTANT_USD = Decimal('50')  # 50 USD for instant withdrawal
     
     @staticmethod
     @transaction.atomic
@@ -116,7 +219,7 @@ class WithdrawalService:
         # Calculate fee
         fee_amount = Decimal('0')
         if withdrawal_speed == 'instant':
-            fee_amount = WithdrawalService.WITHDRAWAL_FEE_INSTANT_HTG
+            fee_amount = WithdrawalService.WITHDRAWAL_FEE_INSTANT_USD
         
         # Check balance after fee
         total_deduct = amount + fee_amount

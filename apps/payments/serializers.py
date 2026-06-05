@@ -3,7 +3,6 @@ DRF Serializers for Payments
 """
 
 from rest_framework import serializers
-from decimal import Decimal
 from .models import (
     CommissionRule, TicketSale, Invoice, PaymentMethod, RefundRequest, Order, Payment, OrderItem
 )
@@ -114,7 +113,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'total_amount', 'currency', 'status', 'items',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'user_email', 'event_title', 'total_amount', 'currency', 'status', 'created_at', 'updated_at', 'items']
+        extra_kwargs = {'event': {'read_only': False}}
 
 
 class PaymentSerializer(serializers.ModelSerializer):

@@ -10,36 +10,90 @@ class PayPalProvider(BasePaymentProvider):
             "client_secret": getattr(settings, 'PAYPAL_CLIENT_SECRET', None)
         })
 
-    def create_payment_session(self, order):
+    def create_payment_session(self, obj, user=None, return_url=None, cancel_url=None):
+        """
+        Creates a PayPal payment session for an Order, SubscriptionPlan, ServiceBooking, or Deposit.
+        'user' is the user object performing the purchase.
+        """
+        from apps.payments.models import Order
+        from apps.subscriptions.models import SubscriptionPlan
+        from apps.marketplace.models import ServiceBooking
+        from apps.wallets.models import Deposit
+        
+        user_id_str = str(user.id) if user else ""
+        
+        if isinstance(obj, Order):
+            item_name = f"Tickets for {obj.event.title}"
+            item_sku = f"ORDER_{obj.id}"
+            custom_field = f"ORDER:{obj.id}:{user_id_str}"
+            amount = str(obj.total_amount)
+            currency = obj.currency
+            description = f"Payment for Order {obj.id}"
+            default_return = f"arkevent://payment/success?order_id={obj.id}"
+            default_cancel = f"arkevent://payment/cancel?order_id={obj.id}"
+        elif isinstance(obj, SubscriptionPlan):
+            item_name = f"Subscription: {obj.name} ({obj.tier})"
+            item_sku = f"SUB_{obj.tier}"
+            custom_field = f"SUB:{obj.tier}:{user_id_str}"
+            amount = str(obj.price_usd)
+            currency = "USD"
+            description = f"Subscription Plan: {obj.name}"
+            default_return = f"arkevent://subscription/success?tier={obj.tier}"
+            default_cancel = "arkevent://subscription/cancel"
+        elif isinstance(obj, ServiceBooking):
+            item_name = f"Booking: {obj.service.title}"
+            item_sku = f"BOOKING_{obj.reference}"
+            custom_field = f"BOOKING:{obj.id}:{user_id_str}"
+            amount = str(obj.total_amount)
+            currency = obj.service.currency or "USD"
+            description = f"Service Booking: {obj.reference}"
+            default_return = f"arkevent://marketplace/booking/success?ref={obj.reference}"
+            default_cancel = "arkevent://marketplace/booking/cancel"
+        elif isinstance(obj, Deposit):
+            item_name = f"Wallet Deposit"
+            item_sku = f"DEPOSIT_{obj.id}"
+            custom_field = f"DEPOSIT:{obj.id}:{user_id_str}"
+            amount = str(obj.amount)
+            currency = obj.currency
+            description = f"Wallet Deposit: {obj.id}"
+            default_return = "arkevent://wallet/deposit/success"
+            default_cancel = "arkevent://wallet/deposit/cancel"
+        else:
+            raise ValueError("Unsupported object type for PayPal payment")
+
         payment = paypalrestsdk.Payment({
             "intent": "sale",
             "payer": {"payment_method": "paypal"},
             "redirect_urls": {
-                "return_url": f"{settings.SUPABASE_PUBLIC_URL}/payment/success?order_id={order.id}",
-                "cancel_url": f"{settings.SUPABASE_PUBLIC_URL}/payment/cancel?order_id={order.id}"
+                "return_url": return_url or default_return,
+                "cancel_url": cancel_url or default_cancel
             },
             "transactions": [{
                 "item_list": {
                     "items": [{
-                        "name": f"Tickets for {order.event.title}",
-                        "sku": str(order.id),
-                        "price": str(order.total_amount),
-                        "currency": order.currency,
+                        "name": item_name,
+                        "sku": item_sku,
+                        "price": amount,
+                        "currency": currency,
                         "quantity": 1
                     }]
                 },
                 "amount": {
-                    "total": str(order.total_amount),
-                    "currency": order.currency
+                    "total": amount,
+                    "currency": currency
                 },
-                "description": f"Payment for Order {order.id}"
+                "description": description,
+                "custom": custom_field
             }]
         })
 
         if payment.create():
             for link in payment.links:
                 if link.rel == "approval_url":
-                    return link.href
+                    return {
+                        'approval_url': link.href,
+                        'payment_id': payment.id
+                    }
         return None
 
     def verify_webhook(self, request):

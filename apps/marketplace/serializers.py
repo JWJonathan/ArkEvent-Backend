@@ -149,10 +149,12 @@ class ServiceBookingCreateSerializer(serializers.ModelSerializer):
 class ServiceBookingListSerializer(serializers.ModelSerializer):
     service_title = serializers.CharField(source='service.title', read_only=True)
     provider_name = serializers.CharField(source='service.provider.business_name', read_only=True)
+    service_id = serializers.ReadOnlyField(source='service.id')
+    service_image = serializers.ReadOnlyField(source='service.featured_image.url')
 
     class Meta:
         model = ServiceBooking
-        fields = ('id', 'reference', 'service_title', 'provider_name', 'start_date', 'total_amount', 'status', 'created_at')
+        fields = ('id', 'reference', 'service_title', 'provider_name', 'start_date', 'total_amount', 'status', 'created_at', 'service_id', 'service_image')
 
 
 class ServiceBookingDetailSerializer(serializers.ModelSerializer):

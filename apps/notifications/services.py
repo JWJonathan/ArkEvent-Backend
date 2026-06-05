@@ -267,7 +267,7 @@ class NotificationService:
 
     # 💳 Paiements & Abonnements
     @classmethod
-    def notify_payment_user(cls, user, notify_type, amount=None, currency="HTG"):
+    def notify_payment_user(cls, user, notify_type, amount=None, currency="USD"):
         titles = {
             'success': "Paiement réussi",
             'failed': "Paiement échoué",

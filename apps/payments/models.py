@@ -54,7 +54,7 @@ class CommissionRule(models.Model):
     )
     fixed_currency = models.CharField(
         max_length=3, 
-        default='HTG',
+        default='USD',
         help_text='Currency for fixed amount'
     )
     
@@ -101,7 +101,7 @@ class TicketSale(models.Model):
     # Basic transaction info
     ticket_quantity = models.IntegerField(validators=[MinValueValidator(1)])
     ticket_price_per_unit = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     # Revenue breakdown
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)  # ticket_quantity * ticket_price_per_unit
@@ -167,7 +167,7 @@ class Invoice(models.Model):
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     # Status
     issued_at = models.DateTimeField(auto_now_add=True)
@@ -309,7 +309,7 @@ class Payment(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payments", db_column='order_id')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payments", db_column='user_id')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.TextField(default="HTG")
+    currency = models.TextField(default="USD")
     transaction_id = models.TextField(unique=True, null=True, blank=True)
     status = models.CharField(max_length=20, default="initiated")
     metadata = models.JSONField(default=dict, blank=True)

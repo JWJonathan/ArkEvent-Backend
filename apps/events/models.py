@@ -71,7 +71,7 @@ class Event(models.Model):
     visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='public')
     ticket_opens_at = models.DateTimeField(null=True, blank=True)
     ticket_closes_at = models.DateTimeField(null=True, blank=True)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     min_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     max_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     marketing_budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

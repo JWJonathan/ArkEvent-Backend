@@ -83,14 +83,15 @@ class BookingManager:
                 is_available=True
             ).exists()
             if not is_available:
-                raise ValidationError(_("Le service n'est pas disponible à cette date."))
+                return {'success': False, 'message': _("Le service n'est pas disponible à cette date.")}
 
         # 3. Calculs financiers
         package = data.get('package')
         base_amount = package.price if package else service.get_effective_price()
         
-        # Commission ArkEvent (ex: 10% par défaut, peut être configuré dynamiquement plus tard)
-        commission_rate = 0.10
+        # Commission ArkEvent (10%)
+        from decimal import Decimal
+        commission_rate = Decimal('0.10')
         commission = base_amount * commission_rate
 
         booking = ServiceBooking.objects.create(
@@ -100,12 +101,43 @@ class BookingManager:
             total_amount=base_amount,
             commission_amount=commission,
             reference=BookingManager.generate_reference(),
-            **data
+            status=ServiceBooking.BookingStatus.AWAITING_PAYMENT,
+            **{k: v for k, v in data.items() if k not in ['service', 'customer', 'package', 'total_amount']}
         )
         
         # Mise à jour statistiques service
         service.bookings_count = models.F('bookings_count') + 1
         service.save(update_fields=['bookings_count'])
+        
+        return {'success': True, 'booking': booking}
+
+    @staticmethod
+    @transaction.atomic
+    def process_booking_payment(booking, transaction_id, payment_method, amount=None, raw_data=None):
+        """
+        Record a payment for a booking and update its status.
+        """
+        from .models import BookingPayment
+        
+        payment_amount = amount or booking.total_amount
+        
+        # Create payment record
+        BookingPayment.objects.create(
+            booking=booking,
+            amount=payment_amount,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            payment_status='SUCCESS',
+            paid_at=timezone.now()
+        )
+        
+        # Update booking status
+        booking.status = ServiceBooking.BookingStatus.CONFIRMED
+        booking.deposit_amount = models.F('deposit_amount') + payment_amount
+        booking.save()
+        
+        from apps.notifications.services import NotificationService
+        NotificationService.notify_payment_user(booking.customer, 'success', payment_amount, booking.service.currency)
         
         return booking
 
@@ -125,14 +157,39 @@ class BookingManager:
     @staticmethod
     @transaction.atomic
     def complete_booking(booking):
+        """
+        Mark booking as completed and credit provider's wallet.
+        """
+        if booking.status == ServiceBooking.BookingStatus.COMPLETED:
+            return booking
+            
         booking.status = ServiceBooking.BookingStatus.COMPLETED
         booking.save()
+        
+        # Provider receives total_amount - commission_amount
+        net_revenue = booking.total_amount - booking.commission_amount
+        
+        # Credit provider's wallet
+        provider_user = booking.service.provider.user
+        from apps.wallets.services import WalletService
+        
+        wallet = WalletService.get_or_create_wallet(provider_user)
+        WalletService.credit_wallet(
+            wallet,
+            net_revenue,
+            'marketplace_sale',
+            f"Service completed: {booking.service.title} ({booking.reference})",
+            str(booking.id)
+        )
         
         # Update provider stats
         provider = booking.service.provider
         provider.total_completed_jobs = models.F('total_completed_jobs') + 1
         provider.total_sales = models.F('total_sales') + booking.total_amount
         provider.save()
+        
+        from apps.notifications.services import NotificationService
+        NotificationService.notify_payment_organizer(booking.service.provider, 'revenue', net_revenue)
         
         return booking
 

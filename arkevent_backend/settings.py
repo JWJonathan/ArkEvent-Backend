@@ -90,6 +90,9 @@ TEMPLATES = [
 WSGI_APPLICATION = 'arkevent_backend.wsgi.application'
 ASGI_APPLICATION = 'arkevent_backend.asgi.application'
 
+BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8030')
+API_URL = env('API_URL', default=BACKEND_URL + '/api/')
+
 from supabase import create_client, Client
 
 # ====== Supabase Client Configuration ======

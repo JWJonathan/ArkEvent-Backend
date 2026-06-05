@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from .models import SubscriptionPlan, UserSubscription, PremiumFeature, UserPremiumFeature
 from apps.wallets.models import Wallet
-from apps.payments.services import WalletService
+from apps.wallets.services import WalletService
 
 
 class SubscriptionService:
@@ -38,7 +38,7 @@ class SubscriptionService:
         user,
         plan: SubscriptionPlan,
         payment_method = None,
-        currency: str = 'HTG'
+        currency: str = 'USD'
     ) -> UserSubscription:
         """
         Subscribe user to plan.
@@ -227,7 +227,7 @@ class PremiumFeatureService:
         user,
         feature: PremiumFeature,
         event = None,
-        currency: str = 'HTG',
+        currency: str = 'USD',
         transaction_id: str = None
     ) -> UserPremiumFeature:
         """

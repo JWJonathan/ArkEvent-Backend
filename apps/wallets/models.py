@@ -30,7 +30,7 @@ class Wallet(models.Model):
         default=0,
         validators=[MinValueValidator(0)]
     )
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='HTG')
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
     
     # Account status
     is_frozen = models.BooleanField(default=False, help_text="Freeze wallet during disputes or investigations")
@@ -86,7 +86,7 @@ class WalletTransaction(models.Model):
     
     # Amount info
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     # Balance snapshot after transaction
     balance_after = models.DecimalField(max_digits=12, decimal_places=2)
@@ -146,7 +146,7 @@ class Deposit(models.Model):
     wallet = models.ForeignKey(Wallet, on_delete=models.PROTECT, related_name='deposits')
     
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
-    currency = models.CharField(max_length=3, choices=[('HTG', 'HTG'), ('USD', 'USD')], default='HTG')
+    currency = models.CharField(max_length=3, choices=[('HTG', 'HTG'), ('USD', 'USD')], default='USD')
     
     deposit_method = models.CharField(max_length=20, choices=DEPOSIT_METHOD_CHOICES)
     status = models.CharField(max_length=20, choices=DEPOSIT_STATUS_CHOICES, default='pending')
@@ -201,7 +201,7 @@ class Withdrawal(models.Model):
     
     # Amount info
     requested_amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
-    currency = models.CharField(max_length=3, choices=[('HTG', 'HTG'), ('USD', 'USD')], default='HTG')
+    currency = models.CharField(max_length=3, choices=[('HTG', 'HTG'), ('USD', 'USD')], default='USD')
     fee_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     net_amount = models.DecimalField(max_digits=12, decimal_places=2)  # requested_amount - fee_amount
     
@@ -259,7 +259,7 @@ class Payout(models.Model):
     wallet = models.ForeignKey(Wallet, on_delete=models.PROTECT, related_name='payouts')
     
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     status = models.CharField(max_length=20, choices=PAYOUT_STATUS_CHOICES, default='pending')
     

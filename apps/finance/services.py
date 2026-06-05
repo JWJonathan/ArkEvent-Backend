@@ -18,7 +18,7 @@ class PlatformRevenueService:
     """Tracks and reports platform-wide revenue."""
     
     @staticmethod
-    def get_daily_revenue(date_obj: date, currency: str = 'HTG') -> PlatformRevenue or None:
+    def get_daily_revenue(date_obj: date, currency: str = 'USD') -> PlatformRevenue or None:
         """Get daily revenue for specific date."""
         return PlatformRevenue.objects.filter(
             revenue_date=date_obj,
@@ -26,7 +26,7 @@ class PlatformRevenueService:
         ).first()
     
     @staticmethod
-    def calculate_daily_revenue(date_obj: date, currency: str = 'HTG') -> PlatformRevenue:
+    def calculate_daily_revenue(date_obj: date, currency: str = 'USD') -> PlatformRevenue:
         """
         Calculate and save daily revenue metrics.
         Aggregates from all transactions for the day.
@@ -94,7 +94,7 @@ class PlatformRevenueService:
         return revenue
     
     @staticmethod
-    def get_monthly_revenue(year: int, month: int, currency: str = 'HTG') -> Dict:
+    def get_monthly_revenue(year: int, month: int, currency: str = 'USD') -> Dict:
         """Get aggregated monthly revenue."""
         from calendar import monthrange
         
@@ -196,7 +196,7 @@ class OrganizerRevenueService:
             gross_revenue=gross_revenue,
             total_commissions=commissions,
             net_revenue=gross_revenue - commissions - refund_amount,
-            currency='HTG',
+            currency='USD',
             total_ticket_sales=ticket_sales.count(),
             total_tickets_sold=ticket_sales.aggregate(
                 total=Sum('ticket_quantity')
@@ -351,5 +351,5 @@ class AnalyticsService:
             'active_events': active_events.count(),
             'active_organizers': active_orgs.count(),
             'platform_revenue': total_revenue,
-            'currency': 'HTG',
+            'currency': 'USD',
         }

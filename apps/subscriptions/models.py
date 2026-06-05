@@ -128,7 +128,7 @@ class UserSubscription(models.Model):
     
     # Subscription metadata
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     # Cancellation info
     cancelled_at = models.DateTimeField(null=True, blank=True)
@@ -217,7 +217,7 @@ class UserPremiumFeature(models.Model):
     
     # Payment and activation
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     activated_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()

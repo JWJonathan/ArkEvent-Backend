@@ -59,7 +59,7 @@ class GiftCard(models.Model):
     code = models.CharField(max_length=50, unique=True)
     initial_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     balance = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     purchaser = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, db_column='purchaser_id', related_name='purchased_gift_cards')
     recipient_email = models.EmailField(blank=True, default='')
     message = models.TextField(blank=True, default='')

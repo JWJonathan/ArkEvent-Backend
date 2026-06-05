@@ -22,7 +22,7 @@ class PlatformRevenue(models.Model):
     event_boost_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
     total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     # Transaction counts
     ticket_sales_count = models.IntegerField(default=0)
@@ -119,8 +119,11 @@ class EventBoost(models.Model):
     ]
     
     BOOST_DURATION_CHOICES = [
-        ('7days', '7 Days - 500 HTG'),
-        ('30days', '30 Days - 1000 HTG'),
+        ('7days', '7 Days - 20 USD'),
+        ('30days', '30 Days - 50 USD'),
+        ('90days', '90 Days - 100 USD'),
+        ('180days', '180 Days - 200 USD'),
+        ('365days', '365 Days - 500 USD'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -13,7 +13,8 @@ from apps.core.permissions import IsAdmin
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
-from apps.users.models import Wallet  # à adapter selon votre structure d'apps
+from apps.wallets.models import Wallet
+from apps.wallets.services import WalletService
 from apps.tickets.models import Ticket  # à adapter selon votre structure d'apps
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -379,10 +380,52 @@ class PaymentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'], url_path='total-spent')
+    @action(detail=False, methods=['post'], url_path='total-spent')
     def total_spent(self, request):
         """Équivalent de getTotalSpent()"""
         total = self.get_queryset().filter(user=request.user, status='succeeded').aggregate(
             total=models.Sum('amount')
         )['total'] or 0.00
         return Response({'total_spent': float(total)})
+
+    @action(detail=False, methods=['post'], url_path='verify-iap', permission_classes=[IsAuthenticated])
+    def verify_iap(self, request):
+        """
+        Validation d'un achat de billets via Google Play In-App Purchase.
+        Attend : order_id, purchase_token, product_id, package_name.
+        """
+        order_id = request.data.get('order_id')
+        token = request.data.get('purchase_token')
+        product_id = request.data.get('product_id')
+        package_name = request.data.get('package_name', "com.arkevent.app")
+
+        if not all([order_id, token, product_id]):
+            return Response({'error': 'order_id, purchase_token et product_id sont requis'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+            
+            # 1. Valider avec Google (is_subscription=False pour les billets)
+            result = verify_google_purchase(package_name, product_id, token, is_subscription=False)
+            
+            # 2. Vérifier l'état de l'achat chez Google (0 = purchased, 1 = cancelled, 2 = pending)
+            # Pour les produits non-abonnements, le champ est 'purchaseState'
+            if result.get('purchaseState') != 0:
+                return Response({'error': 'L\'achat n\'est pas validé par Google Play'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 3. Traiter le paiement réussi dans le système
+            with transaction.atomic():
+                PaymentService.process_successful_payment(
+                    order_id=order.id,
+                    provider_name='google_play',
+                    transaction_id=token, # On utilise le token comme ID de transaction unique
+                    raw_data=result
+                )
+            
+            return Response({'status': 'success', 'order_id': order.id})
+            
+        except Order.DoesNotExist:
+            return Response({'error': 'Commande introuvable'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -1,11 +1,12 @@
 from rest_framework import viewsets, status, filters, permissions, pagination, exceptions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.serializers import ValidationError
+from rest_framework.serializers import ValidationError as DRFValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models
 from django.db.models import Count, Q, Exists, OuterRef, Prefetch, F
 from django.utils import timezone
-from django_filters.rest_framework import DjangoFilterBackend
+from django.core.exceptions import ValidationError
 
 from .models import (
     MarketplaceCategory, MarketplaceProvider, MarketplaceService, 
@@ -16,6 +17,7 @@ from .serializers import *
 from .services import BookingManager, MarketplaceServiceManager, ProviderManager, ReviewManager
 from .permissions import IsProviderOwner, IsServiceOwner, IsBookingParticipant, IsVerifiedProvider
 from .filters import MarketplaceServiceFilter, ProviderFilter
+from apps.subscriptions.iap_service import verify_google_purchase
 
 class MarketplacePagination(pagination.PageNumberPagination):
     page_size = 20
@@ -140,6 +142,50 @@ class MarketplaceServiceViewSet(viewsets.ModelViewSet):
         MarketplaceServiceManager.publish_service(service)
         return Response({'status': 'Service published'})
 
+    @action(detail=True, methods=['get', 'post'], permission_classes=[permissions.IsAuthenticated], url_path='availability')
+    def availability(self, request, pk=None):
+        service = self.get_object()
+        
+        if request.method == 'GET':
+            availabilities = service.availabilities.all()
+            serializer = ServiceAvailabilitySerializer(availabilities, many=True)
+            return Response(serializer.data)
+        
+        # POST logic: Manage availability
+        if not IsServiceOwner().has_object_permission(request, self, service):
+            return Response({'error': 'Seul le propriétaire du service peut modifier la disponibilité.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        is_many = isinstance(request.data, list)
+        serializer = ServiceAvailabilitySerializer(data=request.data, many=is_many)
+        if not serializer.is_valid():
+            print(f"DEBUG: Availability serializer errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        if is_many:
+            for item in serializer.validated_data:
+                ServiceAvailability.objects.update_or_create(
+                    service=service,
+                    date=item['date'],
+                    start_time=item.get('start_time'),
+                    defaults={
+                        'end_time': item.get('end_time'),
+                        'is_available': item.get('is_available', True)
+                    }
+                )
+        else:
+            item = serializer.validated_data
+            ServiceAvailability.objects.update_or_create(
+                service=service,
+                date=item['date'],
+                start_time=item.get('start_time'),
+                defaults={
+                    'end_time': item.get('end_time'),
+                    'is_available': item.get('is_available', True)
+                }
+            )
+            
+        return Response({'status': 'Disponibilité mise à jour'})
+
     @action(detail=True, methods=['post'], url_path='increment_view')
     def increment_view(self, request, pk=None):
         service = self.get_object()
@@ -217,9 +263,22 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
             return ServiceBookingCreateSerializer
         return self.serializer_class
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Manually call perform_create which now handles the response
+        return self.perform_create(serializer)
+
     def perform_create(self, serializer):
         service = serializer.validated_data['service']
-        BookingManager.create_booking(service, self.request.user, serializer.validated_data)
+        result = BookingManager.create_booking(service, self.request.user, serializer.validated_data)
+        
+        if not result.get('success'):
+            # Return a 200 OK with success=False and the message to avoid error handling in frontend
+            return Response({'success': False, 'message': result.get('message')}, status=status.HTTP_200_OK)
+        
+        return Response({'success': True, 'data': ServiceBookingListSerializer(result.get('booking')).data}, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], permission_classes=[IsServiceOwner])
     def confirm(self, request, pk=None):
@@ -233,6 +292,62 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
         reason = request.data.get('reason', '')
         BookingManager.cancel_booking(booking, reason)
         return Response({'status': 'Booking cancelled'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsServiceOwner])
+    def complete(self, request, pk=None):
+        booking = self.get_object()
+        BookingManager.complete_booking(booking)
+        return Response({'status': 'Booking completed'})
+
+
+class ServiceFavoriteViewSet(viewsets.ModelViewSet):
+    serializer_class = ServiceFavoriteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ServiceFavorite.objects.filter(user=self.request.user).select_related('service', 'service__provider', 'service__category')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def my_favorites(self, request):
+        return self.list(request)
+
+
+class MarketplaceMessageViewSet(viewsets.ModelViewSet):
+    serializer_class = MarketplaceMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return MarketplaceMessage.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user)).select_related('sender', 'receiver', 'booking')
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def mark_as_read(self, request, pk=None):
+        message = self.get_object()
+        if message.receiver == request.user:
+            message.is_read = True
+            message.save()
+            return Response({'status': 'Message marked as read'})
+        return Response({'error': 'You are not the receiver of this message'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            result = verify_google_purchase(package_name, product_id, token, is_subscription=False)
+            
+            if result.get('purchaseState') == 0:
+                BookingManager.process_booking_payment(
+                    booking=booking,
+                    transaction_id=token,
+                    payment_method='google_play',
+                    raw_data=result
+                )
+                return Response({'status': 'success', 'reference': booking.reference})
+            return Response({'error': 'L\'achat n\'est pas validé par Google Play.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'], permission_classes=[IsServiceOwner])
     def complete(self, request, pk=None):
