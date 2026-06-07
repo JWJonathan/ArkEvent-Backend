@@ -54,12 +54,37 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
             
         if event.organization.created_by != self.request.user and not self.request.user.is_staff:
             raise PermissionDenied("Vous ne pouvez pas créer de type de billet pour cet événement.")
+        
+        # Check subscription limit
+        from apps.subscriptions.services import SubscriptionService
+        from django.db.models import Sum
+        current_total = TicketType.objects.filter(event=event).aggregate(total=Sum('quantity'))['total'] or 0
+        new_quantity = serializer.validated_data.get('quantity', 0)
+        
+        is_allowed, message = SubscriptionService.check_limit(event.created_by, 'max_tickets_per_event', current_total + new_quantity)
+        if not is_allowed:
+            from rest_framework import exceptions
+            raise exceptions.ValidationError(message)
+            
         serializer.save(event=event)
 
     def perform_update(self, serializer):
         instance = self.get_object()
         if instance.event.organization.created_by != self.request.user and not self.request.user.is_staff:
             raise PermissionDenied()
+            
+        # Check subscription limit if quantity is changing
+        if 'quantity' in serializer.validated_data:
+            from apps.subscriptions.services import SubscriptionService
+            from django.db.models import Sum
+            other_total = TicketType.objects.filter(event=instance.event).exclude(id=instance.id).aggregate(total=Sum('quantity'))['total'] or 0
+            new_total = other_total + serializer.validated_data['quantity']
+            
+            is_allowed, message = SubscriptionService.check_limit(instance.event.created_by, 'max_tickets_per_event', new_total)
+            if not is_allowed:
+                from rest_framework import exceptions
+                raise exceptions.ValidationError(message)
+                
         serializer.save(updated_at=timezone.now())
 
     def perform_destroy(self, instance):
@@ -168,6 +193,12 @@ class TicketViewSet(viewsets.ModelViewSet):
         # Vérifier que l'utilisateur est bien organisateur de l'événement
         if ticket.ticket_type.event.organization.created_by != request.user and not request.user.is_staff:
             return Response({'success': False, 'message': 'Non autorisé à valider'})
+
+        # Check subscription feature: QR Check-in
+        from apps.subscriptions.services import SubscriptionService
+        is_allowed, message = SubscriptionService.check_feature(ticket.ticket_type.event.created_by, 'has_qr_checkin')
+        if not is_allowed:
+            return Response({'success': False, 'message': message})
 
         # Vérifier le statut
         if ticket.status == 'used':

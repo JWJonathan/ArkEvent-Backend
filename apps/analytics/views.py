@@ -32,7 +32,22 @@ class EventAnalyticsDailyViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['date', 'views', 'revenue']
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        user = self.request.user
+        if user.is_staff:
+            qs = super().get_queryset()
+        else:
+            from django.db.models import Q
+            qs = super().get_queryset().filter(
+                Q(event__created_by=user) | Q(event__organizers__user=user)
+            ).distinct()
+
+        # Check subscription feature: Basic Analytics
+        from apps.subscriptions.services import SubscriptionService
+        is_allowed, message = SubscriptionService.check_feature(user, 'has_basic_analytics')
+        if not is_allowed:
+            from rest_framework import exceptions
+            raise exceptions.PermissionDenied(message)
+
         event_id = self.request.query_params.get('event_id')
         if event_id:
             qs = qs.filter(event_id=event_id)

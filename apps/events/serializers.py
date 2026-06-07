@@ -10,6 +10,7 @@ class EventSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
     created_by_email = serializers.ReadOnlyField(source='created_by.email')
     image_url = serializers.ImageField(source='poster', read_only=True)  # alias pour compatibilité Flutter
+    requires_branding = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -35,9 +36,15 @@ class EventSerializer(serializers.ModelSerializer):
             'require_approval', 'checkin_method', 'event_language',
             'accessibility_info', 'sustainability_info',
             'metadata', 'settings',
-            'created_at', 'updated_at', 'published_at'
+            'created_at', 'updated_at', 'published_at',
+            'requires_branding'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'published_at', 'organization_name', 'category_name', 'created_by_email', 'created_by']
+
+    def get_requires_branding(self, obj):
+        from apps.subscriptions.services import SubscriptionService
+        features = SubscriptionService.get_subscription_features(obj.created_by)
+        return features.get('requires_branding', True)
 
 class EventCategorySerializer(serializers.ModelSerializer):
     parent_name = serializers.ReadOnlyField(source='parent.name')

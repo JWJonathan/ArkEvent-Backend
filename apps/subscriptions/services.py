@@ -215,6 +215,64 @@ class SubscriptionService:
             'price_usd': plan.price_usd,
             'billing_cycle': plan.billing_cycle,
         }
+
+    @staticmethod
+    def check_limit(user, limit_name, current_value=None, exclude_id=None):
+        """
+        Generic limit checker.
+        Returns (is_allowed, message)
+        """
+        features = SubscriptionService.get_subscription_features(user)
+        limit = features.get(limit_name)
+        
+        if limit is None: # Unlimited
+            return True, ""
+            
+        if limit_name == 'max_active_events':
+            from apps.events.models import Event
+            query = Event.objects.filter(
+                created_by=user,
+                status__in=['draft', 'published', 'postponed'],
+                deleted_at__isnull=True
+            )
+            if exclude_id:
+                query = query.exclude(id=exclude_id)
+                
+            count = query.count()
+            if count >= limit:
+                return False, f"Vous avez atteint la limite d'événements actifs ({limit}) pour votre plan actuel ({features['tier']})."
+        
+        elif limit_name == 'max_tickets_per_event':
+            # current_value should be the total quantity of tickets for the event
+            if current_value is not None and current_value > limit:
+                return False, f"La capacité totale de tickets pour cet événement ne peut pas dépasser {limit} avec votre plan actuel ({features['tier']})."
+                
+        return True, ""
+
+    @staticmethod
+    def check_feature(user, feature_name):
+        """
+        Check if a user has access to a specific feature.
+        Returns (is_allowed, message)
+        """
+        features = SubscriptionService.get_subscription_features(user)
+        has_feature = features.get(feature_name, False)
+        
+        if not has_feature:
+            feature_labels = {
+                'has_qr_checkin': 'Check-in par QR Code',
+                'has_advanced_analytics': 'Analyses avancées',
+                'has_custom_pages': 'Pages personnalisées',
+                'has_marketing_tools': 'Outils marketing',
+                'has_multi_admin': 'Multi-administrateurs',
+                'has_api_access': 'Accès API',
+                'has_white_label': 'Marque blanche',
+                'has_sponsor_placement': 'Placement de sponsors',
+            }
+            label = feature_labels.get(feature_name, feature_name)
+            return False, f"La fonctionnalité '{label}' n'est pas disponible dans votre plan actuel ({features['tier']})."
+            
+        return True, ""
     
 
 

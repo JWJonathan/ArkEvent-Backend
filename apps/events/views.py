@@ -88,10 +88,24 @@ class EventViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # created_by automatiquement assigné à l'utilisateur authentifié
         # L'organization_id doit être valide et l'utilisateur doit être organisateur
+        from apps.subscriptions.services import SubscriptionService
+        is_allowed, message = SubscriptionService.check_limit(self.request.user, 'max_active_events')
+        if not is_allowed:
+            raise exceptions.ValidationError(message)
+            
         serializer.save(created_by=self.request.user)
 
     # ─── PUT/PATCH /events/{id}/ → updateEvent() ───
     def perform_update(self, serializer):
+        # Si le statut passe à un statut actif, vérifier la limite
+        new_status = serializer.validated_data.get('status')
+        if new_status in ['published', 'draft', 'postponed']:
+            instance = self.get_object()
+            from apps.subscriptions.services import SubscriptionService
+            is_allowed, message = SubscriptionService.check_limit(self.request.user, 'max_active_events', exclude_id=instance.id)
+            if not is_allowed:
+                raise exceptions.ValidationError(message)
+
         # Si le statut passe à 'published', on met à jour published_at
         if serializer.validated_data.get('status') == 'published':
             serializer.save(published_at=timezone.now())
@@ -285,6 +299,18 @@ class EventOrganizerViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]  # liste également authentifié (admin plus tard)
 
     def perform_create(self, serializer):
+        event = serializer.validated_data.get('event')
+        if not event:
+            event_id = self.request.data.get('event_id')
+            if event_id:
+                event = Event.objects.get(id=event_id)
+        
+        if event:
+            from apps.subscriptions.services import SubscriptionService
+            is_allowed, message = SubscriptionService.check_feature(event.created_by, 'has_multi_admin')
+            if not is_allowed:
+                raise exceptions.ValidationError(message)
+                
         serializer.save(added_by=self.request.user)  # l'utilisateur qui ajoute
 
     def perform_update(self, serializer):
@@ -331,6 +357,12 @@ class EventSponsorViewSet(viewsets.ModelViewSet):
             from apps.events.models import Event
             event = Event.objects.get(id=event_id)
         
+        # Check subscription feature: Sponsor Placement
+        from apps.subscriptions.services import SubscriptionService
+        is_allowed, message = SubscriptionService.check_feature(event.created_by, 'has_sponsor_placement')
+        if not is_allowed:
+            raise exceptions.ValidationError(message)
+            
         serializer.save(event=event)
 
 
@@ -382,6 +414,12 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
             from apps.events.models import Event
             event = Event.objects.get(id=event_id)
         
+        # Check subscription feature: Marketing Tools
+        from apps.subscriptions.services import SubscriptionService
+        is_allowed, message = SubscriptionService.check_feature(event.created_by, 'has_marketing_tools')
+        if not is_allowed:
+            raise exceptions.ValidationError(message)
+            
         # Si le sender n'est pas fourni, on prend l'utilisateur connecté
         sender = serializer.validated_data.get('sender')
         if not sender:
