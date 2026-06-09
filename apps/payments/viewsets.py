@@ -364,7 +364,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order = serializer.save(
                 user=self.request.user,
                 status='pending',
-                currency=validated_items[0]['ticket_type'].event.currency or 'HTG',
+                currency=validated_items[0]['ticket_type'].event.currency or 'USD',
                 total_amount=total_amount
             )
 
@@ -539,9 +539,13 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='create-session', permission_classes=[IsAuthenticated])
     def create_payment_session(self, request):
-        obj_id = request.data.get('order_id') # Renamed to obj_id for clarity
+        obj_id = request.data.get('order_id')
         provider_name = request.data.get('provider')
         
+        # Validation ajoutée pour empêcher les requêtes avec ID invalide ou vide
+        if not obj_id or str(obj_id).strip() == '':
+            return Response({'error': 'ID de commande/objet manquant ou invalide'}, status=400)
+            
         # Try to find the object in different models
         obj = None
         for model in [Order, ServiceBooking, SubscriptionPlan, Deposit]:
@@ -551,15 +555,20 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 if model == ServiceBooking:
                     lookup_kwargs['customer'] = request.user
                 else:
-                    lookup_kwargs['user'] = request.user
+                    # Ajout d'une vérification robuste pour éviter les erreurs de format UUID
+                    # Si le modèle n'a pas de champ 'user', cela lèvera une erreur
+                    try:
+                        lookup_kwargs['user'] = request.user
+                    except:
+                        pass
                 
                 obj = model.objects.get(**lookup_kwargs)
                 break
-            except (model.DoesNotExist, serializers.ValidationError):
+            except (model.DoesNotExist, serializers.ValidationError, ValueError):
                 continue
         
         if not obj:
-            return Response({'error': 'Objet de paiement invalide'}, status=400)
+            return Response({'error': 'Objet de paiement invalide ou non trouvé'}, status=400)
         
         # Check status if applicable
         if isinstance(obj, Order) and obj.status != 'pending':

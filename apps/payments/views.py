@@ -94,7 +94,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order = serializer.save(
                 user=self.request.user,
                 status='pending',
-                currency='HTG'  # par défaut
+                currency='USD'  # par défaut
             )
             # On attend un tableau de tickets dans le payload
             ticket_items = self.request.data.get('items', [])

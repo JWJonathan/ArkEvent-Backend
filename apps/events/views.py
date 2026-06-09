@@ -91,7 +91,8 @@ class EventViewSet(viewsets.ModelViewSet):
         from apps.subscriptions.services import SubscriptionService
         is_allowed, message = SubscriptionService.check_limit(self.request.user, 'max_active_events')
         if not is_allowed:
-            raise exceptions.ValidationError(message)
+            custom_message = f"{message} Passez à un plan supérieur pour augmenter votre capacité."
+            raise exceptions.ValidationError({'detail': custom_message})
             
         serializer.save(created_by=self.request.user)
 
@@ -104,7 +105,8 @@ class EventViewSet(viewsets.ModelViewSet):
             from apps.subscriptions.services import SubscriptionService
             is_allowed, message = SubscriptionService.check_limit(self.request.user, 'max_active_events', exclude_id=instance.id)
             if not is_allowed:
-                raise exceptions.ValidationError(message)
+                custom_message = f"{message} Passez à un plan supérieur pour augmenter votre capacité."
+                raise exceptions.ValidationError({'detail': custom_message})
 
         # Si le statut passe à 'published', on met à jour published_at
         if serializer.validated_data.get('status') == 'published':

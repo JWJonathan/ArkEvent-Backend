@@ -394,7 +394,7 @@ class PaymentService:
             # 3. Update related tickets
             tickets = Ticket.objects.filter(order=order, status='reserved')
             for ticket in tickets:
-                ticket.status = 'sold'
+                ticket.status = 'confirmed'
                 ticket.reserved_until = None
                 ticket.save(update_fields=['status', 'reserved_until', 'updated_at'])
                 NotificationService.notify_ticket_status(order.user, ticket, 'generated')

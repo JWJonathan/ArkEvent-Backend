@@ -71,7 +71,7 @@ class RevenueReport(models.Model):
     gross_revenue = models.DecimalField(max_digits=12, decimal_places=2)
     total_commissions = models.DecimalField(max_digits=12, decimal_places=2)
     net_revenue = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     # Transaction details
     total_ticket_sales = models.IntegerField()
@@ -177,7 +177,7 @@ class AnalyticsDailyMetric(models.Model):
     # Ticket sales
     tickets_sold = models.IntegerField(default=0)
     revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    currency = models.CharField(max_length=3, default='HTG')
+    currency = models.CharField(max_length=3, default='USD')
     
     # Refunds
     refunds = models.IntegerField(default=0)

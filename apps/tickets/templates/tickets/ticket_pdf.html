@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArkEvent – Billet électronique</title>
+    <!-- Google Fonts : Inter + espacement aéré -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 (gratuit) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 1.2cm;
+        }
+
+        body {
+            background: #f2f4f8;  /* fond discret pour l’aperçu, ignoré à l’impression */
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #111827;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 32px 24px;
+        }
+
+        /* Carte principale – pureté & dégradé doux */
+        .ticket {
+            max-width: 880px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 40px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        /* Bandeau dégradé moderne (du bleu profond au violet) */
+        .ticket-glow {
+            height: 8px;
+            background: linear-gradient(90deg, #2563eb, #7c3aed, #db2777);
+        }
+
+        /* Header : logo + organisateur */
+        .ticket-header {
+            padding: 36px 40px 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            background: linear-gradient(145deg, #2563eb, #7c3aed);
+            width: 48px;
+            height: 48px;
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 26px;
+            box-shadow: 0 10px 18px -10px rgba(37,99,235,0.3);
+        }
+
+        .brand-name {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #1f2937, #2563eb);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .organizer {
+            background: rgba(37,99,235,0.06);
+            backdrop-filter: blur(2px);
+            padding: 8px 20px;
+            border-radius: 60px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1e40af;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .organizer i {
+            font-size: 13px;
+            color: #2563eb;
+        }
+
+        /* Corps */
+        .ticket-body {
+            padding: 32px 40px 24px 40px;
+        }
+
+        /* Titre événement – fort, élégant */
+        .event-title {
+            font-size: 34px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            background: linear-gradient(125deg, #0f172a, #1e293b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 32px;
+            border-left: 4px solid #2563eb;
+            padding-left: 24px;
+        }
+
+        /* Grille d’infos – épurée, sans cartes lourdes */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px 36px;
+            margin-bottom: 44px;
+        }
+
+        .info-item {
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 12px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #5b6e8c;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .info-label i {
+            font-size: 13px;
+            color: #3b82f6;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .info-sub {
+            font-size: 13px;
+            color: #5f6c84;
+            margin-top: 6px;
+        }
+
+        /* Section QR – minimaliste et aérée */
+        .qr-wrapper {
+            margin: 16px 0 20px 0;
+            text-align: center;
+            background: linear-gradient(145deg, #fafcff, #ffffff);
+            border-radius: 32px;
+            padding: 28px 20px 24px;
+            border: 1px solid #eef2ff;
+        }
+
+        .qr-badge {
+            display: inline-block;
+            background: rgba(37,99,235,0.08);
+            padding: 4px 14px;
+            border-radius: 60px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #2563eb;
+            margin-bottom: 20px;
+            letter-spacing: 0.3px;
+        }
+
+        .qr-image {
+            width: 164px;
+            height: 164px;
+            object-fit: contain;
+            background: white;
+            padding: 6px;
+            border-radius: 24px;
+            box-shadow: 0 12px 24px -14px rgba(0, 0, 0, 0.12);
+            margin-bottom: 16px;
+        }
+
+        .token-container {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: #f1f5f9;
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        .token-container i {
+            margin-right: 6px;
+            color: #4b5563;
+        }
+
+        /* Footer – élégant, discret */
+        .ticket-footer {
+            background: #ffffff;
+            border-top: 1px dashed #e2e8f0;
+            padding: 20px 40px 28px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 11px;
+            color: #6c7a91;
+        }
+
+        .footer-message {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-message i {
+            font-size: 12px;
+            color: #3b82f6;
+        }
+
+        /* Version imprimée PDF : fond blanc, ombres légères, bords nets */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            .ticket {
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+            }
+            .ticket-glow {
+                background: #2563eb;
+                print-color-adjust: exact;
+            }
+            .brand-icon, .brand-name, .event-title {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            .qr-image {
+                box-shadow: none;
+                border: 0.5px solid #ccc;
+            }
+            .info-item {
+                border-bottom-color: #e9ecef;
+            }
+        }
+
+        /* Responsive pour petit écran (rare en PDF, mais sécurité) */
+        @media (max-width: 700px) {
+            .ticket-header {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 24px;
+            }
+            .ticket-body {
+                padding: 24px;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .event-title {
+                font-size: 28px;
+                padding-left: 16px;
+            }
+            .ticket-footer {
+                padding: 20px 24px;
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <div class="ticket-glow"></div>
+
+        <div class="ticket-header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fas fa-compass"></i>
+                </div>
+                <div class="brand-name">ArkEvent</div>
+            </div>
+            <div class="organizer">
+                <i class="fas fa-calendar-check"></i>
+                <span>Organisé par {{ organization.name }}</span>
+            </div>
+        </div>
+
+        <div class="ticket-body">
+            <h1 class="event-title">{{ event.title }}</h1>
+
+            <div class="info-grid">
+                <!-- Date & heure -->
+                <div class="info-item">
+                    <div class="info-label"><i class="far fa-calendar-alt"></i> Date & Heure</div>
+                    <div class="info-value">{{ event.start_date|date:"d F Y, H:i" }}</div>
+                    <div class="info-sub">Ouverture des portes à {{ event.start_date|date:"H:i" }}</div>
+                </div>
+                <!-- Lieu -->
+                <div class="info-item">
+                    <div class="info-label"><i class="fas fa-location-dot"></i> Lieu</div>
+                    <div class="info-value">{{ event.venue_name }}</div>
+                    <div class="info-sub">{{ event.venue_address }}</div>
+                </div>
+                <!-- Type de billet -->
+                <div class="info-item">
+                    <div class="info-label"><i class="fas fa-tag"></i> Type de billet</div>
+                    <div class="info-value">{{ ticket_type.name }}</div>
+                    <div class="info-sub">Accès inclus, placement libre</div>
+                </div>
+                <!-- Détenteur -->
+                <div class="info-item">
+                    <div class="info-label"><i class="fas fa-user-circle"></i> Détenteur</div>
+                    <div class="info-value">{{ ticket.owner.profile.full_name|default:"Anonyme" }}</div>
+                    <div class="info-sub">Pièce d’identité obligatoire</div>
+                </div>
+                <!-- Prix -->
+                <div class="info-item">
+                    <div class="info-label"><i class="fas fa-ticket-simple"></i> Prix</div>
+                    <div class="info-value">{{ ticket_type.price }} {{ event.currency }}</div>
+                    <div class="info-sub">TTC – TVA incluse</div>
+                </div>
+                <!-- Référence (optionnel, ajout de clarté) -->
+                <div class="info-item">
+                    <div class="info-label"><i class="fas fa-hashtag"></i> Réf. commande</div>
+                    <div class="info-value">{{ ticket.order_id|default:"—" }}</div>
+                </div>
+            </div>
+
+            <div class="qr-wrapper">
+                <div class="qr-badge">
+                    <i class="fas fa-qrcode"></i> Contrôle d’accès
+                </div>
+                <div>
+                    <img src="{{ qr_code_path }}" class="qr-image" alt="QR code d’entrée">
+                </div>
+                <div class="token-container">
+                    <i class="fas fa-key"></i> {{ ticket.token }}
+                </div>
+                <p style="margin-top: 18px; font-size: 11px; color: #6c7a91;">
+                    <i class="fas fa-mobile-screen-button"></i> Présentez ce QR code (écran ou papier)
+                </p>
+            </div>
+        </div>
+
+        <div class="ticket-footer">
+            <div class="footer-message">
+                <i class="fas fa-shield-heart"></i> Billet électronique sécurisé
+            </div>
+            <div class="footer-message">
+                <i class="fas fa-rotate-left"></i> Non échangeable / remboursable selon CGV
+            </div>
+            <div class="footer-message">
+                <i class="far fa-copyright"></i> 2026 ArkEvent – Tous droits réservés
+            </div>
+        </div>
+    </div>
+</body>
+</html>

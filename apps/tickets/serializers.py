@@ -24,10 +24,11 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = [
             'id', 'ticket_type_id', 'ticket_type_name', 'event_title',
-            'status', 'token', 'owner_id',
-            'owner_name', 'reserved_until', 'checkin_at', 'created_at', 'updated_at'
+            'status', 'token', 'owner_id', 'owner_name', 
+            'is_verified', 'checkin_at', 'checkin_method', 'qr_code', 'pdf_ticket',
+            'reserved_until', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'token', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'token', 'qr_code', 'pdf_ticket', 'created_at', 'updated_at']
 
 
 class TicketHoldSerializer(serializers.ModelSerializer):

@@ -11,10 +11,10 @@ class TicketTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ('id', 'ticket_type', 'status', 'token', 'owner', 'created_at')
-    list_filter = ('status', 'created_at', 'ticket_type__event')
+    list_display = ('id', 'ticket_type', 'status', 'is_verified', 'token', 'owner', 'created_at')
+    list_filter = ('status', 'is_verified', 'checkin_method', 'created_at', 'ticket_type__event')
     search_fields = ('id', 'token', 'owner__email', 'ticket_type__name', 'ticket_type__event__title')
-    readonly_fields = ('id', 'token', 'created_at', 'checkin_at', 'updated_at')
+    readonly_fields = ('id', 'token', 'created_at', 'checkin_at', 'updated_at', 'qr_code')
     raw_id_fields = ('ticket_type', 'owner', 'order')
 
 @admin.register(TicketHold)

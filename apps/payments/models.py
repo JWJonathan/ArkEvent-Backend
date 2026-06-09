@@ -280,12 +280,19 @@ class RefundRequest(models.Model):
 # ============================================================================
 
 class Order(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('awaiting_payment', 'Awaiting Payment'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders", db_column='user_id')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="orders", db_column='event_id')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.TextField(default="HTG")
-    status = models.CharField(max_length=20, default="pending")
+    currency = models.TextField(default="USD")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
