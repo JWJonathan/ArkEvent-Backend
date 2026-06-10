@@ -29,7 +29,7 @@ class MarketplaceCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = MarketplaceCategory.objects.filter(is_active=True).annotate(
         children_count=Count('subcategories'),
         services_count=Count('services', filter=Q(services__status='PUBLISHED'))
-    )
+    ).order_by('name')
     serializer_class = MarketplaceCategoryListSerializer
     permission_classes = [permissions.AllowAny]
 
