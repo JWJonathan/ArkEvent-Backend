@@ -32,4 +32,4 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 EXPOSE 8030
 
 # Start gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8030", "arkevent_backend.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8030", "arkevent_backend.wsgi:application", "--access-logfile", "-", "--error-logfile", "-"]
