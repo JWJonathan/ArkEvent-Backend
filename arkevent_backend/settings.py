@@ -335,3 +335,14 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['https://backend.arkevent.arkht.com', 'http://backend.arkevent.arkht.com' ])
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['https://backend.arkevent.arkht.com', 'http://backend.arkevent.arkht.com' ])
+CORS_ALLOW_CREDENTIALS = True
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
