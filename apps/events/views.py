@@ -13,6 +13,7 @@ class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = 'id'  # on utilise l'ID, mais on peut aussi chercher par slug avec une action
+    throttle_classes = []
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'description', 'venue_name', 'venue_city']
@@ -178,6 +179,7 @@ from django.utils import timezone
 class EventCategoryViewSet(viewsets.ModelViewSet):
     queryset = EventCategory.objects.filter(deleted_at__isnull=True).order_by('sort_order', 'name')
     serializer_class = EventCategorySerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -239,7 +241,7 @@ class EventRelatedMixin:
 class EventSessionViewSet(viewsets.ModelViewSet, EventRelatedMixin):
     queryset = EventSession.objects.filter(deleted_at__isnull=True).order_by('-start_time')
     serializer_class = EventSessionSerializer
-
+    throttle_classes = []
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated()]  # ajoutez IsEventOwner plus tard si nécessaire
@@ -265,6 +267,7 @@ class EventSessionViewSet(viewsets.ModelViewSet, EventRelatedMixin):
 class EventSpeakerViewSet(viewsets.ModelViewSet):
     queryset = EventSpeaker.objects.all().order_by('sort_order', '-created_at')
     serializer_class = EventSpeakerSerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -292,6 +295,7 @@ class EventSpeakerViewSet(viewsets.ModelViewSet):
 class EventOrganizerViewSet(viewsets.ModelViewSet):
     queryset = EventOrganizer.objects.all().order_by('-created_at')
     serializer_class = EventOrganizerSerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -321,6 +325,7 @@ class EventOrganizerViewSet(viewsets.ModelViewSet):
 class EventMediaViewSet(viewsets.ModelViewSet):
     queryset = EventMedia.objects.all().order_by('-created_at')
     serializer_class = EventMediaSerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -341,6 +346,7 @@ class EventMediaViewSet(viewsets.ModelViewSet):
 class EventSponsorViewSet(viewsets.ModelViewSet):
     queryset = EventSponsor.objects.all().order_by('sort_order', '-created_at')
     serializer_class = EventSponsorSerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -372,6 +378,7 @@ class EventSponsorViewSet(viewsets.ModelViewSet):
 class EventFaqViewSet(viewsets.ModelViewSet):
     queryset = EventFaq.objects.all().order_by('sort_order', '-created_at')
     serializer_class = EventFaqSerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -398,6 +405,7 @@ class EventFaqViewSet(viewsets.ModelViewSet):
 class AnnouncementViewSet(viewsets.ModelViewSet):
     queryset = Announcement.objects.all().order_by('-created_at')
     serializer_class = AnnouncementSerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -441,6 +449,7 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
 class EventShareViewSet(viewsets.ModelViewSet):
     queryset = EventShare.objects.all().order_by('-created_at')
     serializer_class = EventShareSerializer
+    throttle_classes = []
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:

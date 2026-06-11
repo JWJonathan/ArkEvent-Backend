@@ -32,6 +32,7 @@ class MarketplaceCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     ).order_by('name')
     serializer_class = MarketplaceCategoryListSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = []
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -45,6 +46,7 @@ class MarketplaceProviderViewSet(viewsets.ModelViewSet):
     filterset_class = ProviderFilter
     search_fields = ['business_name', 'description', 'city']
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    throttle_classes = []
 
     def get_queryset(self):
         qs = super().get_queryset()
