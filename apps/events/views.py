@@ -30,17 +30,9 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-
         user = self.request.user
 
-        # Si l'utilisateur n'est pas authentifié, ne montrer que les événements publics publiés
-        if not user.is_authenticated:
-            return qs.filter(visibility='public', status='published')
-        
-        if user.is_staff:
-            return qs
-
-        # Filtres par query params (correspondant à getAllEvents)
+        # 1. Filtres par query params (correspondant à getAllEvents)
         category_id = self.request.query_params.get('category_id')
         if category_id:
             qs = qs.filter(category_id=category_id)
@@ -57,14 +49,20 @@ class EventViewSet(viewsets.ModelViewSet):
         if slug:
             qs = qs.filter(slug=slug)
 
-        # Pour les non‑staff : événements publics publiés + événements où l'utilisateur est organisateur
-        from django.db.models import Q
-        return qs.filter(
-            Q(visibility='public', status='published') |
-            Q(organizers__user=user)
-        ).distinct()
+        # 2. Application des filtres d'accès
+        if user.is_staff:
+            return qs
 
-        return qs
+        from django.db.models import Q
+        # Pour les non‑staff : événements publics publiés + événements où l'utilisateur est organisateur
+        if user.is_authenticated:
+            return qs.filter(
+                Q(visibility='public', status='published') |
+                Q(organizers__user=user)
+            ).distinct()
+        
+        # Pour les non‑authentifiés : événements publics publiés uniquement
+        return qs.filter(visibility='public', status='published')
 
     # ─── GET /events/my/ → getMyEvents() ───
     @action(detail=False, methods=['get'], url_path='my')

@@ -2,9 +2,14 @@ from django.contrib import admin
 from django.conf.urls.static import static
 from django.urls import path, include
 from django.conf import settings
+from django.http import HttpResponse
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('robots.txt', lambda x: HttpResponse(
+        "User-agent: *\nDisallow: /admin/\nDisallow: /api/\nDisallow: /auth/\nDisallow: /accounts/",
+        content_type="text/plain"
+    )),
     path('api/', include('apps.core.urls')),
     path('api/users/', include('apps.users.urls')),
     path('api/events/', include('apps.events.urls')),
