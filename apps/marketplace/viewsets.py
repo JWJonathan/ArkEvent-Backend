@@ -160,7 +160,6 @@ class MarketplaceServiceViewSet(viewsets.ModelViewSet):
         is_many = isinstance(request.data, list)
         serializer = ServiceAvailabilitySerializer(data=request.data, many=is_many)
         if not serializer.is_valid():
-            print(f"DEBUG: Availability serializer errors: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         if is_many:
@@ -210,8 +209,6 @@ class MarketplaceServiceViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='new')
     def new(self, request):
-        # Return initial data for the service creation form
-        # Or simply return a success status if the frontend just needs to check accessibility
         return Response({
             'message': 'Ready to create a new service',
             'allowed_methods': ['POST']
@@ -268,8 +265,6 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        # Manually call perform_create which now handles the response
         return self.perform_create(serializer)
 
     def perform_create(self, serializer):
@@ -277,7 +272,6 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
         result = BookingManager.create_booking(service, self.request.user, serializer.validated_data)
         
         if not result.get('success'):
-            # Return a 200 OK with success=False and the message to avoid error handling in frontend
             return Response({'success': False, 'message': result.get('message')}, status=status.HTTP_200_OK)
         
         return Response({'success': True, 'data': ServiceBookingListSerializer(result.get('booking')).data}, status=status.HTTP_201_CREATED)
@@ -301,40 +295,15 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
         BookingManager.complete_booking(booking)
         return Response({'status': 'Booking completed'})
 
-
-class ServiceFavoriteViewSet(viewsets.ModelViewSet):
-    serializer_class = ServiceFavoriteSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return ServiceFavorite.objects.filter(user=self.request.user).select_related('service', 'service__provider', 'service__category')
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-    @action(detail=False, methods=['get'])
-    def my_favorites(self, request):
-        return self.list(request)
-
-
-class MarketplaceMessageViewSet(viewsets.ModelViewSet):
-    serializer_class = MarketplaceMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return MarketplaceMessage.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user)).select_related('sender', 'receiver', 'booking')
-
-    def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
-
-    @action(detail=True, methods=['post'])
-    def mark_as_read(self, request, pk=None):
-        message = self.get_object()
-        if message.receiver == request.user:
-            message.is_read = True
-            message.save()
-            return Response({'status': 'Message marked as read'})
-        return Response({'error': 'You are not the receiver of this message'}, status=status.HTTP_403_FORBIDDEN)
+    @action(detail=True, methods=['post'], url_path='verify_google_play_payment')
+    def verify_google_play_payment(self, request, pk=None):
+        booking = self.get_object()
+        package_name = request.data.get('package_name')
+        product_id = request.data.get('product_id')
+        token = request.data.get('token')
+        
+        if not all([package_name, product_id, token]):
+            return Response({'error': 'Missing parameters'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             result = verify_google_purchase(package_name, product_id, token, is_subscription=False)
@@ -351,12 +320,6 @@ class MarketplaceMessageViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsServiceOwner])
-    def complete(self, request, pk=None):
-        booking = self.get_object()
-        BookingManager.complete_booking(booking)
-        return Response({'status': 'Booking completed'})
-
 
 class ServiceFavoriteViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceFavoriteSerializer
@@ -378,10 +341,61 @@ class MarketplaceMessageViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return MarketplaceMessage.objects.filter(Q(sender=self.request.user) | Q(receiver=self.request.user)).select_related('sender', 'receiver', 'booking')
+        # Privacy fix: Only see messages where I am sender or receiver
+        return MarketplaceMessage.objects.filter(
+            Q(sender=self.request.user) | Q(receiver=self.request.user)
+        ).select_related('sender', 'receiver', 'booking').order_by('created_at')
 
     def perform_create(self, serializer):
+        # Automatically set the sender to the current user
         serializer.save(sender=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def conversation(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        messages = MarketplaceMessage.objects.filter(
+            (Q(sender=self.request.user) & Q(receiver_id=user_id)) |
+            (Q(sender_id=user_id) & Q(receiver=self.request.user))
+        ).select_related('sender', 'receiver', 'booking').order_by('created_at')
+        
+        serializer = self.get_serializer(messages, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def my_chats(self, request):
+        # Get all users who have sent or received messages from the current user
+        sent_to = MarketplaceMessage.objects.filter(sender=request.user).values_list('receiver', flat=True)
+        received_from = MarketplaceMessage.objects.filter(receiver=request.user).values_list('sender', flat=True)
+        
+        user_ids = set(list(sent_to) + list(received_from))
+        
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        users = User.objects.filter(id__in=user_ids)
+        
+        chat_list = []
+        for user in users:
+            last_msg = MarketplaceMessage.objects.filter(
+                (Q(sender=request.user) & Q(receiver=user)) |
+                (Q(sender=user) & Q(receiver=request.user))
+            ).order_by('-created_at').first()
+            
+            chat_list.append({
+                'user_id': user.id,
+                'user_name': user.full_name if hasattr(user, 'full_name') else user.username,
+                'user_avatar': user.avatar.url if hasattr(user, 'avatar') and user.avatar else None,
+                'last_message': last_msg.message if last_msg else "",
+                'last_message_time': last_msg.created_at if last_msg else None,
+                'unread_count': MarketplaceMessage.objects.filter(sender=user, receiver=request.user, is_read=False).count()
+            })
+        
+        # Sort by last message time
+        chat_list.sort(key=lambda x: x['last_message_time'] or timezone.now(), reverse=True)
+        
+        return Response(chat_list)
 
     @action(detail=True, methods=['post'])
     def mark_as_read(self, request, pk=None):
