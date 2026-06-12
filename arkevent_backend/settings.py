@@ -96,18 +96,18 @@ API_URL = env('API_URL', default=BACKEND_URL + '/api/')
 from supabase import create_client, Client
 
 # ====== Supabase Client Configuration ======
-SUPABASE_URL = env('SUPABASE_URL', default='http://supabase-kong:8000')
-SUPABASE_PUBLIC_URL = env('SUPABASE_PUBLIC_URL', default='http://localhost:8001')
-SUPABASE_ANON_KEY = env('SUPABASE_ANON_KEY', default='')
-SUPABASE_SERVICE_KEY = env('SUPABASE_SERVICE_KEY', default='')
-SUPABASE_JWT_SECRET = env('SUPABASE_JWT_SECRET', default='')
+SUPABASE_URL = os.environ.get('SUPABASE_URL', default='http://supabase-kong:8000')
+SUPABASE_PUBLIC_URL = os.environ.get('SUPABASE_PUBLIC_URL', default='http://localhost:8001')
+SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY', default='')
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', default='')
+SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET', default='')
 
 # Supabase Storage compatible S3
-SUPABASE_S3_ENDPOINT_URL = env('SUPABASE_S3_ENDPOINT_URL', default='https://supabase.arkht.com/storage/v1/s3')
-SUPABASE_S3_ACCESS_KEY_ID = env('S3_PROTOCOL_ACCESS_KEY_ID', default='')
-SUPABASE_S3_SECRET_ACCESS_KEY = env('S3_PROTOCOL_ACCESS_KEY_SECRET', default='')
-SUPABASE_BUCKET_NAME = env('SUPABASE_BUCKET_NAME', default='arkevent')
-SUPABASE_S3_REGION = env('SUPABASE_S3_REGION', default='us-east-1')
+SUPABASE_S3_ENDPOINT_URL = os.environ.get('SUPABASE_S3_ENDPOINT_URL', default='https://supabase.arkht.com/storage/v1/s3')
+SUPABASE_S3_ACCESS_KEY_ID = os.environ.get('SUPABASE_S3_ACCESS_KEY_ID', default='')
+SUPABASE_S3_SECRET_ACCESS_KEY = os.environ.get('SUPABASE_S3_SECRET_ACCESS_KEY', default='')
+SUPABASE_BUCKET_NAME = os.environ.get('SUPABASE_BUCKET_NAME', default='arkevent')
+SUPABASE_S3_REGION = os.environ.get('SUPABASE_S3_REGION', default='us-east-1')
 # Optionnel : domaine personnalisé pour les URLs publiques (si configuré)
 SUPABASE_S3_CUSTOM_DOMAIN = None   # ou 'cdn.supabase.arkht.com' si tu as un CDN
 
@@ -162,17 +162,17 @@ print("DOCKER =", DOCKER)
 print("DB HOST =", os.environ.get("SUPABASE_DB_HOST"))
 
 # Supabase Settings
-SUPABASE_URL = env('SUPABASE_URL', default='')
-SUPABASE_JWT_SECRET = env('SUPABASE_JWT_SECRET', default='')
-SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY', default='')
+SUPABASE_URL = os.environ.get('SUPABASE_URL', default='')
+SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET', default='')
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', default='')
 
 # PayPal Settings
-PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID', default='')
-PAYPAL_CLIENT_SECRET = env('PAYPAL_CLIENT_SECRET', default='')
-PAYPAL_WEBHOOK_ID = env('PAYPAL_WEBHOOK_ID', default='')
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', default='')
+PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', default='')
+PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', default='')
 
 # Social Login Settings
-GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', default='')
 
 
 INSTALLED_APPS += [
