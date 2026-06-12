@@ -96,18 +96,18 @@ API_URL = env('API_URL', default=BACKEND_URL + '/api/')
 from supabase import create_client, Client
 
 # ====== Supabase Client Configuration ======
-SUPABASE_URL = env('SUPABASE_URL', 'http://supabase-kong:8000')
-SUPABASE_PUBLIC_URL = env('SUPABASE_PUBLIC_URL', 'http://localhost:8001')
-SUPABASE_ANON_KEY = env('SUPABASE_ANON_KEY')
-SUPABASE_SERVICE_KEY = env('SUPABASE_SERVICE_KEY')
-SUPABASE_JWT_SECRET = env('SUPABASE_JWT_SECRET')
+SUPABASE_URL = env('SUPABASE_URL', default='http://supabase-kong:8000')
+SUPABASE_PUBLIC_URL = env('SUPABASE_PUBLIC_URL', default='http://localhost:8001')
+SUPABASE_ANON_KEY = env('SUPABASE_ANON_KEY', default='')
+SUPABASE_SERVICE_KEY = env('SUPABASE_SERVICE_KEY', default='')
+SUPABASE_JWT_SECRET = env('SUPABASE_JWT_SECRET', default='')
 
 # Supabase Storage compatible S3
-SUPABASE_S3_ENDPOINT_URL = env('SUPABASE_S3_ENDPOINT_URL', 'https://supabase.arkht.com/storage/v1/s3')
-SUPABASE_S3_ACCESS_KEY_ID = env('S3_PROTOCOL_ACCESS_KEY_ID')
-SUPABASE_S3_SECRET_ACCESS_KEY = env('S3_PROTOCOL_ACCESS_KEY_SECRET')
-SUPABASE_BUCKET_NAME = env('SUPABASE_BUCKET_NAME', 'arkevent-media')
-SUPABASE_S3_REGION = env('SUPABASE_S3_REGION', 'us-east-1')
+SUPABASE_S3_ENDPOINT_URL = env('SUPABASE_S3_ENDPOINT_URL', default='https://supabase.arkht.com/storage/v1/s3')
+SUPABASE_S3_ACCESS_KEY_ID = env('S3_PROTOCOL_ACCESS_KEY_ID', default='')
+SUPABASE_S3_SECRET_ACCESS_KEY = env('S3_PROTOCOL_ACCESS_KEY_SECRET', default='')
+SUPABASE_BUCKET_NAME = env('SUPABASE_BUCKET_NAME', default='arkevent')
+SUPABASE_S3_REGION = env('SUPABASE_S3_REGION', default='us-east-1')
 # Optionnel : domaine personnalisé pour les URLs publiques (si configuré)
 SUPABASE_S3_CUSTOM_DOMAIN = None   # ou 'cdn.supabase.arkht.com' si tu as un CDN
 
