@@ -108,8 +108,11 @@ SUPABASE_S3_ACCESS_KEY_ID = os.environ.get('SUPABASE_S3_ACCESS_KEY_ID', default=
 SUPABASE_S3_SECRET_ACCESS_KEY = os.environ.get('SUPABASE_S3_SECRET_ACCESS_KEY', default='')
 SUPABASE_BUCKET_NAME = os.environ.get('SUPABASE_BUCKET_NAME', default='arkevent')
 SUPABASE_S3_REGION = os.environ.get('SUPABASE_S3_REGION', default='us-east-1')
-# Optionnel : domaine personnalisé pour les URLs publiques (si configuré)
-SUPABASE_S3_CUSTOM_DOMAIN = None   # ou 'cdn.supabase.arkht.com' si tu as un CDN
+
+# Extraction du domaine pour l'URL publique (Supabase)
+# On transforme https://project.supabase.co/storage/v1/s3 en project.supabase.co/storage/v1/object/public/bucket
+_s3_domain = SUPABASE_S3_ENDPOINT_URL.replace('https://', '').replace('http://', '').replace('/storage/v1/s3', '')
+SUPABASE_S3_CUSTOM_DOMAIN = os.environ.get('SUPABASE_S3_CUSTOM_DOMAIN', default=f"{_s3_domain}/storage/v1/object/public/{SUPABASE_BUCKET_NAME}")
 
 # Pour éviter les conflits de noms (chaque upload aura un chemin unique)
 SUPABASE_FILE_OVERWRITE = False
