@@ -112,7 +112,9 @@ SUPABASE_S3_REGION = os.environ.get('SUPABASE_S3_REGION', default='us-east-1')
 # Extraction du domaine pour l'URL publique (Supabase)
 # On transforme https://project.supabase.co/storage/v1/s3 en project.supabase.co/storage/v1/object/public/bucket
 _s3_domain = SUPABASE_S3_ENDPOINT_URL.replace('https://', '').replace('http://', '').replace('/storage/v1/s3', '')
-SUPABASE_S3_CUSTOM_DOMAIN = os.environ.get('SUPABASE_S3_CUSTOM_DOMAIN', default=f"{_s3_domain}/storage/v1/object/public/{SUPABASE_BUCKET_NAME}")
+SUPABASE_S3_CUSTOM_DOMAIN = os.environ.get('SUPABASE_S3_CUSTOM_DOMAIN')
+if not SUPABASE_S3_CUSTOM_DOMAIN:
+    SUPABASE_S3_CUSTOM_DOMAIN = f"{_s3_domain}/storage/v1/object/public/{SUPABASE_BUCKET_NAME}"
 
 # Pour éviter les conflits de noms (chaque upload aura un chemin unique)
 SUPABASE_FILE_OVERWRITE = False
@@ -288,7 +290,10 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Storage Configuration
-if DEBUG:
+# On utilise S3 si la clé d'accès est configurée (même en DEBUG pour tester)
+USE_S3 = os.environ.get('SUPABASE_S3_ACCESS_KEY_ID') is not None
+
+if DEBUG and not USE_S3:
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
