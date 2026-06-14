@@ -177,7 +177,9 @@ PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', default='')
 PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', default='')
 
 # Social Login Settings
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default='')
+GOOGLE_REDIRECT_URI = env('GOOGLE_REDIRECT_URI', default='')
 
 
 INSTALLED_APPS += [
