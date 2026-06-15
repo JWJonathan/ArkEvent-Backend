@@ -294,10 +294,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Storage Configuration
 # On utilise S3 si la clé d'accès est configurée (même en DEBUG pour tester)
 USE_S3 = os.environ.get('SUPABASE_S3_ACCESS_KEY_ID') is not None
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 2048  # Augmente si nécessaire
-#DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # Ou désactive la limite
+DATA_UPLOAD_MAX_NUMBER_FIELDS = int(os.getenv('DJANGO_DATA_UPLOAD_MAX_NUMBER_FIELDS', 10240))
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv('DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE', 1024 * 1024 * 1024))  # 1GB par défaut
 
-FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (ajustez selon besoin)
 
 FILE_UPLOAD_HANDLERS = [
     'django.core.files.uploadhandler.MemoryFileUploadHandler',
@@ -313,11 +312,23 @@ AWS_S3_OBJECT_PARAMETERS = {
 from boto3.s3.transfer import TransferConfig
 
 # Pour les gros fichiers, utilisez le multipart upload
-AWS_S3_TRANSFER_CONFIG = TransferConfig(
-    multipart_threshold=8*1024*1024,  # 8MB
-    multipart_chunksize=8*1024*1024,   # 8MB
-    max_concurrency=10,
-)
+AWS_S3_TRANSFER_CONFIG = {
+    'multipart_threshold': int(os.getenv('AWS_S3_MULTIPART_THRESHOLD', 10 * 1024 * 1024)),  # 10MB
+    'multipart_chunksize': int(os.getenv('AWS_S3_MULTIPART_CHUNKSIZE', 10 * 1024 * 1024)),   # 10MB
+    'max_concurrency': int(os.getenv('AWS_S3_MAX_CONCURRENCY', 10)),
+    'use_threads': True,
+}
+
+from storages.backends.s3boto3 import S3Boto3Storage
+    
+class CustomS3Storage(S3Boto3Storage):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Forcer l'utilisation du multipart upload
+        self.transfer_config = AWS_S3_TRANSFER_CONFIG
+    
+# Remplacer le storage par défaut
+DEFAULT_FILE_STORAGE = 'arkevent_backend.settings.CustomS3Storage'
   
 if DEBUG and not USE_S3:
     STORAGES = {
@@ -364,6 +375,15 @@ LOGGING = {
             'stream': sys.stdout,
         },
     },
+    'loggers': {
+        'storages': {
+            'handlers': ['console'],
+            'level': 'INFO',  # Changez à DEBUG pour plus de détails
+        },
+        'boto3': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
     'root': {
         'handlers': ['console'],
         'level': 'INFO',
