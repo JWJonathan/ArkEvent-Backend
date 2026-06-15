@@ -1,3 +1,4 @@
+from botocore import model
 from django.db import models
 import uuid
 from apps.organization.models import Organization
@@ -33,6 +34,19 @@ class Event(models.Model):
         ('scan', 'Scan'),
         ('face', 'Face'),
         ('code', 'Code'),
+    ]
+    TARGET_AUDIENCIENCE_CHOICES = [
+        ('general', 'Grand public'),
+        ('students', 'Etudiants'),
+        ('professionals', 'Professionels'), 
+        ('families', 'Familles'),
+        ('seniors', 'Personnes âgées'),
+        ('children', 'Enfants'),
+        ('youth', 'Jeunes'),
+        ('developers', 'Développeurs'),
+        ('designers', 'Designers'),
+        ('marketing', 'Marketing'),
+        ('other', 'Other'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -77,12 +91,12 @@ class Event(models.Model):
     max_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     marketing_budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     expected_attendance = models.PositiveIntegerField(null=True, blank=True)
-    target_audience = ArrayField(models.TextField(), blank=True, default=list)
+    target_audience = models.CharField(max_length=20, choices=TARGET_AUDIENCIENCE_CHOICES, default='general')
     custom_registration_url = models.URLField(blank=True, default='')
     meta_title = models.CharField(max_length=255, blank=True, default='')
     meta_description = models.TextField(blank=True, default='')
     meta_keywords = ArrayField(models.TextField(), blank=True, default=list)
-    structured_data = models.JSONField(default=dict, blank=True)
+    structured_data = models.JSONField(default=dict, blank=True, null=True)
     has_waitlist = models.BooleanField(default=False)
     waitlist_capacity = models.PositiveIntegerField(null=True, blank=True)
     allow_transfers = models.BooleanField(default=True)
@@ -91,8 +105,8 @@ class Event(models.Model):
     event_language = models.CharField(max_length=10, default='fr')
     accessibility_info = models.TextField(blank=True, default='')
     sustainability_info = models.TextField(blank=True, default='')
-    metadata = models.JSONField(default=dict, blank=True)
-    settings = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True, null=True)
+    settings = models.JSONField(default=dict, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -140,8 +154,6 @@ class EventCategory(models.Model):
         return self.name
 
 
-from django.contrib.postgres.fields import JSONField
-
 class EventSession(models.Model):
     SESSION_TYPE_CHOICES = [
         ('talk', 'Talk'),
@@ -161,7 +173,7 @@ class EventSession(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
     location = models.CharField(max_length=255, blank=True, default='')
     capacity = models.PositiveIntegerField(null=True, blank=True)
-    speakers = models.JSONField(default=list, blank=True)   # liste d'objets (jsonb)
+    speakers = models.JSONField(default=list, blank=True, null=True)   # liste d'objets (jsonb)
     image = models.ImageField(upload_to='sessions/images/', blank=True, null=True)
     recording = models.FileField(upload_to='sessions/recordings/', blank=True, null=True)
     requires_ticket = models.BooleanField(default=False)
@@ -186,7 +198,7 @@ class EventSpeaker(models.Model):
     role = models.CharField(max_length=255, blank=True, default='')
     bio = models.TextField(blank=True, default='')
     photo = models.ImageField(upload_to='speakers/photos/', blank=True, null=True)
-    social_links = models.JSONField(default=dict, blank=True)
+    social_links = models.JSONField(default=dict, blank=True, null=True)
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
