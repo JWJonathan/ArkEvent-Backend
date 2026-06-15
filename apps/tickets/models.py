@@ -27,6 +27,7 @@ class Ticket(models.Model):
     CHECKIN_METHODS = [
         ('scan', 'Scan QR Code'),
         ('manual', 'Manual Verification'),
+        
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
