@@ -9,6 +9,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.utils import timezone
 
 class Event(models.Model):
+    # Dummy comment for git test
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('published', 'Published'),
