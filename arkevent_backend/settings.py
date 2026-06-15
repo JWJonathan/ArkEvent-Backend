@@ -310,12 +310,14 @@ AWS_S3_OBJECT_PARAMETERS = {
 }
 
 
+from boto3.s3.transfer import TransferConfig
+
 # Pour les gros fichiers, utilisez le multipart upload
-AWS_S3_TRANSFER_CONFIG = {
-    'multipart_threshold': 8 * 1024 * 1024,  # 8MB
-    'multipart_chunksize': 8 * 1024 * 1024,   # 8MB
-    'max_concurrency': 10,
-}
+AWS_S3_TRANSFER_CONFIG = TransferConfig(
+    multipart_threshold=8 * 1024 * 1024,  # 8MB
+    multipart_chunksize=8 * 1024 * 1024,   # 8MB
+    max_concurrency=10,
+)
   
 if DEBUG and not USE_S3:
     STORAGES = {
