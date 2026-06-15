@@ -294,7 +294,29 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Storage Configuration
 # On utilise S3 si la clé d'accès est configurée (même en DEBUG pour tester)
 USE_S3 = os.environ.get('SUPABASE_S3_ACCESS_KEY_ID') is not None
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 2048  # Augmente si nécessaire
+#DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # Ou désactive la limite
 
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (ajustez selon besoin)
+
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+
+# Configuration S3 spécifique
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+
+
+# Pour les gros fichiers, utilisez le multipart upload
+AWS_S3_TRANSFER_CONFIG = {
+    'multipart_threshold': 8 * 1024 * 1024,  # 8MB
+    'multipart_chunksize': 8 * 1024 * 1024,   # 8MB
+    'max_concurrency': 10,
+}
+  
 if DEBUG and not USE_S3:
     STORAGES = {
         "default": {
