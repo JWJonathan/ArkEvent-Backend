@@ -7,7 +7,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('events', '0010_eventsponsor_role_alter_eventmedia_media_type_and_more'),
-        ('events', '0011_fix_target_audience_data'),
     ]
 
     operations = [
