@@ -91,7 +91,7 @@ class Event(models.Model):
     max_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     marketing_budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     expected_attendance = models.PositiveIntegerField(null=True, blank=True)
-    target_audience = models.CharField(max_length=20, choices=TARGET_AUDIENCIENCE_CHOICES, default='general')
+    target_audience = ArrayField(models.CharField(max_length=20, choices=TARGET_AUDIENCIENCE_CHOICES), default=list, blank=True)
     custom_registration_url = models.URLField(blank=True, default='')
     meta_title = models.CharField(max_length=255, blank=True, default='')
     meta_description = models.TextField(blank=True, default='')
@@ -156,13 +156,14 @@ class EventCategory(models.Model):
 
 class EventSession(models.Model):
     SESSION_TYPE_CHOICES = [
-        ('talk', 'Talk'),
-        ('workshop', 'Workshop'),
+        ('talk', 'Discussion'),
+        ('demo', 'Démonstration'),
+        ('workshop', 'Atelier de travail'),
         ('performance', 'Performance'),
         ('panel', 'Panel'),
-        ('break', 'Break'),
-        ('networking', 'Networking'),
-        ('other', 'Other'),
+        ('break', 'Pause'),
+        ('networking', 'Réseautage'),
+        ('other', 'Autre'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='sessions')
@@ -173,7 +174,7 @@ class EventSession(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
     location = models.CharField(max_length=255, blank=True, default='')
     capacity = models.PositiveIntegerField(null=True, blank=True)
-    speakers = models.JSONField(default=list, blank=True, null=True)   # liste d'objets (jsonb)
+    speakers = models.ForeignKey('EventSpeaker', null=True, blank=True, on_delete=models.SET_NULL, db_column='speaker_id')
     image = models.ImageField(upload_to='sessions/images/', blank=True, null=True)
     recording = models.FileField(upload_to='sessions/recordings/', blank=True, null=True)
     requires_ticket = models.BooleanField(default=False)
@@ -212,8 +213,12 @@ class EventSpeaker(models.Model):
 class EventOrganizer(models.Model):
     ROLE_CHOICES = [
         ('manager', 'Manager'),
-        ('viewer', 'Viewer'),
-        ('controller', 'Controller'),
+        ('viewer', 'Spectateur'),
+        ('controller', 'Contrôleur'),
+        ('organizer', 'Organisateur'),
+        ('presenter', 'Présentateur'),
+        ('speaker', 'Intervenant'),
+        ('other', 'Other'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='organizers')
@@ -235,6 +240,8 @@ class EventMedia(models.Model):
         ('image', 'Image'),
         ('video', 'Video'),
         ('document', 'Document'),
+        ('audio', 'Audio'),
+        ('other', 'Other'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='media')
@@ -256,12 +263,24 @@ class EventMedia(models.Model):
 
 
 class EventSponsor(models.Model):
+    ROLE_CHOICES = [
+        ('platinum', 'Platinum'),
+        ('gold', 'Gold'),
+        ('silver', 'Silver'),
+        ('bronze', 'Bronze'),
+    ]
+    LEVEL_CHOICES = [
+        ('global', 'Global'),
+        ('regional', 'Regional'),
+        ('local', 'Local'),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, db_column='event_id', related_name='sponsors')
     name = models.CharField(max_length=255)
     logo = models.ImageField(upload_to='sponsors/logos/', blank=True, null=True)
     website = models.URLField(blank=True, default='')
-    level = models.CharField(max_length=100, blank=True, default='')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='bronze')
+    level = models.CharField(max_length=100, choices=LEVEL_CHOICES, default='')
     description = models.TextField(blank=True, default='')
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

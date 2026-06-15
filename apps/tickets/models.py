@@ -35,7 +35,12 @@ class Ticket(models.Model):
     status = models.CharField(max_length=20, default="available") # available, reserved, confirmed, used, cancelled
     token = models.TextField(unique=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, db_column='owner_id')
+    quantity = models.IntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     reserved_until = models.DateTimeField(null=True, blank=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    redeemed_at = models.DateTimeField(null=True, blank=True)
     
     is_verified = models.BooleanField(default=False)
     checkin_at = models.DateTimeField(null=True, blank=True)

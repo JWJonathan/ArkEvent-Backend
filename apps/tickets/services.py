@@ -89,7 +89,8 @@ class ReservationService:
                         owner_id=user_id,
                         status='reserved',
                         token=secrets.token_urlsafe(32),
-                        reserved_until=reserved_until
+                        reserved_until=reserved_until,
+                        price=ticket_type.price
                     ))
 
             # Batch create
@@ -143,7 +144,8 @@ class ReservationService:
                 order=order,
                 owner_id=user_id,
                 status='confirmed',
-                token=secrets.token_urlsafe(32)
+                token=secrets.token_urlsafe(32),
+                price=ticket_type.price
             )
 
             # Notification

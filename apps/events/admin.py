@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.postgres.fields import ArrayField
+from django.forms import CheckboxSelectMultiple
 from .models import (
     EventCategory, Event, EventSession, EventSpeaker, 
     EventOrganizer, EventMedia, EventSponsor, EventFaq, 
@@ -38,7 +40,7 @@ class EventCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ('title', 'organization', 'category', 'start_date', 'status', 'visibility', 'created_at')
+    list_display = ('title', 'organization', 'category', 'target_audience', 'start_date', 'status', 'visibility', 'created_at')
     list_filter = ('status', 'visibility', 'category', 'start_date', 'organization')
     search_fields = ('title', 'slug', 'description', 'venue_name')
     readonly_fields = ('id', 'created_at', 'updated_at', 'published_at')
@@ -53,6 +55,9 @@ class EventAdmin(admin.ModelAdmin):
         EventSponsorInline, 
         EventFaqInline
     ]
+    formfield_overrides = {
+        ArrayField: {'widget': CheckboxSelectMultiple},
+    }
 
 @admin.register(EventSession)
 class EventSessionAdmin(admin.ModelAdmin):
