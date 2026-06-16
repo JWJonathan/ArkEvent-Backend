@@ -11,7 +11,8 @@ def generate_tickets_for_type(sender, instance, created, **kwargs):
         for _ in range(instance.quantity):
             tickets.append(Ticket(
                 ticket_type=instance,
-                token=secrets.token_hex(24)
+                token=secrets.token_hex(24),
+                price=instance.price
             ))
         Ticket.objects.bulk_create(tickets)
 
