@@ -312,12 +312,12 @@ AWS_S3_OBJECT_PARAMETERS = {
 from boto3.s3.transfer import TransferConfig
 
 # Pour les gros fichiers, utilisez le multipart upload
-AWS_S3_TRANSFER_CONFIG = {
-    'multipart_threshold': int(os.getenv('AWS_S3_MULTIPART_THRESHOLD', 10 * 1024 * 1024)),  # 10MB
-    'multipart_chunksize': int(os.getenv('AWS_S3_MULTIPART_CHUNKSIZE', 10 * 1024 * 1024)),   # 10MB
-    'max_concurrency': int(os.getenv('AWS_S3_MAX_CONCURRENCY', 10)),
-    'use_threads': True,
-}
+AWS_S3_TRANSFER_CONFIG = TransferConfig(
+    multipart_threshold=int(os.getenv('AWS_S3_MULTIPART_THRESHOLD', 10 * 1024 * 1024)),  # 10MB
+    multipart_chunksize=int(os.getenv('AWS_S3_MULTIPART_CHUNKSIZE', 10 * 1024 * 1024)),   # 10MB
+    max_concurrency=int(os.getenv('AWS_S3_MAX_CONCURRENCY', 10)),
+    use_threads=True,
+)
 
 from storages.backends.s3boto3 import S3Boto3Storage
     
@@ -342,7 +342,7 @@ if DEBUG and not USE_S3:
 else:
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "arkevent_backend.settings.CustomS3Storage",
             "OPTIONS": {
                 "access_key": SUPABASE_S3_ACCESS_KEY_ID,
                 "secret_key": SUPABASE_S3_SECRET_ACCESS_KEY,
