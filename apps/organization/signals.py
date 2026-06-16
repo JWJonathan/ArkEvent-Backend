@@ -1,4 +1,4 @@
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.text import slugify
 from .models import Organization
@@ -14,3 +14,22 @@ def generate_organization_slug(sender, instance, **kwargs):
             slug = f"{base_slug}-{counter}"
             counter += 1
         instance.slug = slug
+
+    # Track old verification status
+    if instance.pk:
+        try:
+            previous = Organization.objects.get(pk=instance.pk)
+            instance._old_verified = previous.verified
+        except Organization.DoesNotExist:
+            instance._old_verified = False
+    else:
+        instance._old_verified = False
+
+@receiver(post_save, sender=Organization)
+def notify_organization_changes(sender, instance, created, **kwargs):
+    from apps.notifications.services import NotificationService
+    
+    if created:
+        NotificationService.notify_organization_created(instance.created_by, instance)
+    elif not getattr(instance, '_old_verified', False) and instance.verified:
+        NotificationService.notify_organization_verified(instance.created_by, instance)

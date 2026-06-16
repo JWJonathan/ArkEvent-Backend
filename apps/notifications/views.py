@@ -31,6 +31,17 @@ class NotificationLogViewSet(viewsets.ModelViewSet):
         # Pour les autres actions (mark_read, etc.) on laisse le queryset complet, mais l'objet est vérifié plus tard
         return super().get_queryset()
     
+    # GET /notifications/my/push/ → notifications push de l'utilisateur connecté
+    @action(detail=False, methods=['get'], url_path='my/push')
+    def my_push_logs(self, request):
+        qs = NotificationLog.objects.filter(user=request.user, type='push').order_by('-sent_at')
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
     # GET /notifications/my → notifications de l'utilisateur connecté
     @action(detail=False, methods=['get'], url_path='my')  # Redondant mais explicite
     def my_logs(self, request):

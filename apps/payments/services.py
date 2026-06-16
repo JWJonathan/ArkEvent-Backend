@@ -416,6 +416,7 @@ class PaymentService:
 
             # Notify buyer
             NotificationService.notify_ticket_purchase(order.user, order)
+            NotificationService.notify_ticket_order_placed(order.user, order)
             NotificationService.notify_organizer_sales(event, 'sale')
 
             # Check if first sale

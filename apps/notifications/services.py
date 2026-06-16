@@ -145,6 +145,153 @@ class NotificationService:
         cls.send_notification(user, title, body, notification_type='push', metadata={'organization_id': str(organization.id)})
         cls.send_notification(user, title, body, notification_type='email', metadata={'organization_id': str(organization.id)})
 
+    @classmethod
+    def notify_organization_verified(cls, user, organization):
+        """
+        Sends notifications when an organization is verified.
+        """
+        title = "Organisation vérifiée"
+        body = f"Félicitations ! Votre organisation '{organization.name}' a été vérifiée."
+        cls.send_notification(user, title, body, notification_type='push', metadata={'organization_id': str(organization.id)})
+        cls.send_notification(user, title, body, notification_type='email', metadata={'organization_id': str(organization.id)})
+
+    @classmethod
+    def notify_event_created(cls, user, event):
+        """
+        Sends notifications when a user creates a new event.
+        """
+        title = "Nouvel événement créé"
+        body = f"Vous avez créé l'événement '{event.title}'."
+        cls.send_notification(user, title, body, notification_type='push', event=event, metadata={'event_id': str(event.id)})
+        # Optional: Email as well if desired
+        cls.send_notification(user, title, body, notification_type='email', event=event, metadata={'event_id': str(event.id)})
+
+    @classmethod
+    def notify_event_published(cls, user, event):
+        """
+        Sends an email notification when an event status is set to published.
+        """
+        title = "Événement publié !"
+        body = f"Félicitations ! Votre événement '{event.title}' est maintenant publié."
+        # Email as requested
+        cls.send_notification(user, title, body, notification_type='email', event=event, metadata={'event_id': str(event.id)})
+        # Also push for better visibility
+        cls.send_notification(user, title, body, notification_type='push', event=event, metadata={'event_id': str(event.id)})
+
+    @classmethod
+    def notify_plan_activated(cls, user, subscription):
+        """
+        Sends notifications when a user activates a plan.
+        """
+        plan = subscription.plan
+        title = "Plan activé avec succès"
+        body = (
+            f"Votre plan '{plan.get_tier_display()}' a été activé.\n"
+            f"Détails :\n"
+            f"- Prix : {subscription.amount_paid} {subscription.currency}\n"
+            f"- Cycle : {plan.get_billing_cycle_display()}\n"
+            f"- Renouvellement : {subscription.renewal_date}"
+        )
+        metadata = {
+            'plan_id': str(plan.id),
+            'subscription_id': str(subscription.id),
+            'tier': plan.tier
+        }
+        cls.send_notification(user, title, body, notification_type='push', metadata=metadata)
+        cls.send_notification(user, title, body, notification_type='email', metadata=metadata)
+
+    @classmethod
+    def notify_ticket_order_placed(cls, user, order):
+        """
+        Sends notifications when a user places a ticket order, with all details.
+        """
+        # Retrieve items for the order to get ticket details
+        items = order.items.all()
+        items_details = "\n".join(
+            [f"- {item.quantity}x {item.ticket_type.name} à {item.price_at_purchase} {order.currency}" 
+             for item in items]
+        )
+        
+        title = "Commande confirmée"
+        body = (
+            f"Votre commande pour l'événement '{order.event.title}' a été passée avec succès.\n"
+            f"Détails des billets :\n"
+            f"{items_details}\n"
+            f"Total : {order.total_amount} {order.currency}"
+        )
+        
+        metadata = {
+            'order_id': str(order.id),
+            'event_id': str(order.event.id)
+        }
+        
+        cls.send_notification(user, title, body, notification_type='push', event=order.event, order=order, metadata=metadata)
+        cls.send_notification(user, title, body, notification_type='email', event=order.event, order=order, metadata=metadata)
+
+    @classmethod
+    def notify_provider_created(cls, user, provider):
+        """
+        Sends notification when a provider account is created.
+        """
+        title = "Compte prestataire créé"
+        body = f"Votre demande de création de compte prestataire pour '{provider.business_name}' a été reçue."
+        cls.send_notification(user, title, body, notification_type='push')
+        cls.send_notification(user, title, body, notification_type='email')
+
+    @classmethod
+    def notify_provider_verified(cls, user, provider):
+        """
+        Sends notification when a provider account is verified.
+        """
+        title = "Compte prestataire vérifié"
+        body = f"Félicitations ! Votre compte prestataire '{provider.business_name}' est maintenant vérifié."
+        cls.send_notification(user, title, body, notification_type='push')
+        cls.send_notification(user, title, body, notification_type='email')
+
+    @classmethod
+    def notify_service_created(cls, user, service):
+        """
+        Sends notification when a user creates a new marketplace service.
+        """
+        title = "Nouveau service créé"
+        body = f"Vous avez créé le service '{service.title}' avec succès."
+        metadata = {'service_id': str(service.id)}
+        cls.send_notification(user, title, body, notification_type='push', metadata=metadata)
+        cls.send_notification(user, title, body, notification_type='email', metadata=metadata)
+
+    @classmethod
+    def notify_service_published(cls, user, service):
+        """
+        Sends notification when a marketplace service is published.
+        """
+        title = "Service publié !"
+        body = f"Félicitations ! Votre service '{service.title}' est maintenant publié sur la marketplace."
+        metadata = {'service_id': str(service.id)}
+        cls.send_notification(user, title, body, notification_type='push', metadata=metadata)
+        cls.send_notification(user, title, body, notification_type='email', metadata=metadata)
+
+    @classmethod
+    def notify_booking_created(cls, user, booking):
+        """
+        Sends notification when a user places a service booking.
+        """
+        title = "Nouvelle réservation"
+        body = f"Votre réservation pour '{booking.service.title}' (Réf: {booking.reference}) a été créée et est en attente."
+        metadata = {'booking_id': str(booking.id)}
+        cls.send_notification(user, title, body, notification_type='push', metadata=metadata)
+        cls.send_notification(user, title, body, notification_type='email', metadata=metadata)
+
+    @classmethod
+    def notify_booking_status_changed(cls, user, booking):
+        """
+        Sends notification when a service booking status changes.
+        """
+        title = f"Mise à jour de réservation : {booking.reference}"
+        body = f"Le statut de votre réservation pour '{booking.service.title}' est passé à : {booking.get_status_display()}."
+        metadata = {'booking_id': str(booking.id)}
+        cls.send_notification(user, title, body, notification_type='push', metadata=metadata)
+        cls.send_notification(user, title, body, notification_type='email', metadata=metadata)
+
     # 🎉 Événements
     @classmethod
     def notify_event_update(cls, event, change_type):
