@@ -252,8 +252,11 @@ class EventSessionViewSet(viewsets.ModelViewSet, EventRelatedMixin):
         return self.filter_queryset_by_event_access(qs)
 
     def perform_create(self, serializer):
-        # Le champ event_id doit être passé dans le payload
-        serializer.save()
+        event_id = self.request.data.get('event_id') or self.request.query_params.get('event_id')
+        if not event_id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'event_id': 'This field is required.'})
+        serializer.save(event_id=event_id)
 
     def perform_update(self, serializer):
         serializer.save(updated_at=timezone.now())
