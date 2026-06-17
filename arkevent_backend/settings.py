@@ -174,6 +174,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', default=
 # PayPal Settings
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', default='')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', default='')
+PAYPAL_MODE = os.environ.get('PAYPAL_MODE', default='sandbox')  # 'live' pour production
 PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', default='')
 
 # Social Login Settings
