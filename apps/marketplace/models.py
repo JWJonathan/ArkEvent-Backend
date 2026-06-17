@@ -107,7 +107,7 @@ class MarketplaceProvider(TimeStampedModel, SoftDeleteModel):
     address = models.CharField(max_length=255, verbose_name=_("Adresse"))
     city = models.CharField(max_length=100, db_index=True, verbose_name=_("Ville"))
     postal_code = models.CharField(max_length=20, verbose_name=_("Code postal"))
-    country = models.CharField(max_length=100, default="France", verbose_name=_("Pays"))
+    country = models.CharField(max_length=100, default="Haïti", verbose_name=_("Pays"))
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     

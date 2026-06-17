@@ -83,11 +83,11 @@ class MemberService:
     @staticmethod
     def get_members(org):
         """Retourne tous les membres d'une organisation avec le nom du profil."""
-        return org.members.select_related('user__profile').all().order_by('-joined_at')
+        return org.members.select_related('user__marketplace_profile').all().order_by('-joined_at')
 
     @staticmethod
     def get_all_members():
-        return OrganizationMember.objects.select_related('user__profile', 'organization').all().order_by('-joined_at')
+        return OrganizationMember.objects.select_related('user__marketplace_profile', 'organization').all().order_by('-joined_at')
 
     @staticmethod
     def add_member(org, user, role='viewer', status='active', invited_by=None):
