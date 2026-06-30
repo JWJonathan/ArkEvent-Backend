@@ -234,6 +234,44 @@ class ServiceReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceReviewSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
+    def get_queryset(self):
+        """
+        Filtre les reviews selon les paramètres de la requête.
+        Supporte:
+        - service: UUID du service
+        - user: ID de l'utilisateur
+        - rating: note minimum
+        """
+        queryset = super().get_queryset()
+        
+        # Filtrer par service (UUID)
+        service_id = self.request.query_params.get('service')
+        if service_id:
+            queryset = queryset.filter(service_id=service_id)
+        
+        # Filtrer par utilisateur
+        user_id = self.request.query_params.get('user')
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        
+        # Filtrer par note minimum
+        min_rating = self.request.query_params.get('min_rating')
+        if min_rating:
+            try:
+                queryset = queryset.filter(rating__gte=int(min_rating))
+            except ValueError:
+                pass
+        
+        # Filtrer par note maximum
+        max_rating = self.request.query_params.get('max_rating')
+        if max_rating:
+            try:
+                queryset = queryset.filter(rating__lte=int(max_rating))
+            except ValueError:
+                pass
+        
+        return queryset
+
     def get_serializer_class(self):
         if self.action == 'create':
             return ServiceReviewCreateSerializer

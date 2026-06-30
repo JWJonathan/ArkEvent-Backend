@@ -203,7 +203,7 @@ class ReviewManager:
             raise ValidationError(_("Vous avez déjà laissé un avis pour ce service."))
             
         review = ServiceReview.objects.create(
-            service=service,
+            #service=service,
             reviewer=reviewer,
             **data
         )

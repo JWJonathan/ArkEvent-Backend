@@ -103,7 +103,7 @@ class ServiceAdmin(admin.ModelAdmin):
             'fields': ('city', 'country')
         }),
         (_("Statistiques"), {
-            'fields': ('views_count', 'favorites_count', 'bookings_count'),
+            'fields': ('views_count', 'reviews_count', 'average_rating', 'favorites_count', 'bookings_count'),
             'classes': ('collapse',)
         }),
         (_("SEO"), {

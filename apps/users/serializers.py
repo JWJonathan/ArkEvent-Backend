@@ -86,14 +86,14 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
 from .models import EmailVerificationToken, PasswordResetToken
 
 class EmailVerificationTokenSerializer(serializers.ModelSerializer):
-    user_name = serializers.ReadOnlyField(source='user.profile.full_name')
+    user_name = serializers.ReadOnlyField(source='user.full_name')
 
     class Meta:
         model = EmailVerificationToken
         fields = ['id', 'user_id', 'user_name', 'token', 'expires_at', 'created_at']
 
 class PasswordResetTokenSerializer(serializers.ModelSerializer):
-    user_name = serializers.ReadOnlyField(source='user.profile.full_name')
+    user_name = serializers.ReadOnlyField(source='user.full_name')
 
     class Meta:
         model = PasswordResetToken
@@ -103,14 +103,14 @@ from .models import EmailVerificationToken, PasswordResetToken
 from .models import EmailVerificationToken, PasswordResetToken
 
 class EmailVerificationTokenSerializer(serializers.ModelSerializer):
-    user_name = serializers.ReadOnlyField(source='user.profile.full_name')
+    user_name = serializers.ReadOnlyField(source='user.full_name')
 
     class Meta:
         model = EmailVerificationToken
         fields = ['id', 'user_id', 'user_name', 'token', 'expires_at', 'created_at']
 
 class PasswordResetTokenSerializer(serializers.ModelSerializer):
-    user_name = serializers.ReadOnlyField(source='user.profile.full_name')
+    user_name = serializers.ReadOnlyField(source='user.full_name')
 
     class Meta:
         model = PasswordResetToken

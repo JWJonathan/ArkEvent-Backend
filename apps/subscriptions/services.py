@@ -63,16 +63,18 @@ class SubscriptionService:
             amount = plan.price_htg
         
         # Create subscription
-        subscription = UserSubscription.objects.create(
+        subscription, created = UserSubscription.objects.update_or_create(
             user=user,
-            plan=plan,
-            status='active',
-            start_date=start_date,
-            renewal_date=renewal_date,
-            auto_renew=True,
-            payment_method=payment_method,
-            amount_paid=amount,
-            currency=currency
+            defaults={
+                'plan': plan,
+                'status': 'active',
+                'start_date': start_date,
+                'renewal_date': renewal_date,
+                'auto_renew': True,
+                'payment_method': payment_method,
+                'amount_paid': amount,
+                'currency': currency,
+            }
         )
         
         from apps.notifications.services import NotificationService

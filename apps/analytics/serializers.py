@@ -3,7 +3,7 @@ from .models import EventView, EventAnalyticsDaily, ActivityLog
 
 class EventViewSerializer(serializers.ModelSerializer):
     event_title = serializers.ReadOnlyField(source='event.title')
-    user_name = serializers.ReadOnlyField(source='user.profile.full_name')
+    user_name = serializers.ReadOnlyField(source='user.full_name')
 
     class Meta:
         model = EventView
@@ -22,7 +22,7 @@ class EventAnalyticsDailySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 class ActivityLogSerializer(serializers.ModelSerializer):
-    user_name = serializers.ReadOnlyField(source='user.profile.full_name')
+    user_name = serializers.ReadOnlyField(source='user.full_name')
 
     class Meta:
         model = ActivityLog

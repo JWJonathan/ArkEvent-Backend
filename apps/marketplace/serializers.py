@@ -86,7 +86,7 @@ class MarketplaceServiceListSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'slug', 'provider_name', 'category_name',
             'featured_image', 'base_price', 'discount_price', 'effective_price',
-            'city', 'is_featured', 'service_type'
+            'city', 'is_featured', 'service_type', 'reviews_count', 'average_rating'
         )
 
 

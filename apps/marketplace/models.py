@@ -236,7 +236,7 @@ class MarketplaceService(TimeStampedModel, SoftDeleteModel, SEOModel):
     
     # Localisation
     city = models.CharField(max_length=100, verbose_name=_("Ville"))
-    country = models.CharField(max_length=100, default="France", verbose_name=_("Pays"))
+    country = models.CharField(max_length=100, default="Haïti", verbose_name=_("Pays"))
     
     # Médias
     featured_image = models.ImageField(upload_to='marketplace/services/featured/', verbose_name=_("Image principale"))
@@ -246,6 +246,8 @@ class MarketplaceService(TimeStampedModel, SoftDeleteModel, SEOModel):
     views_count = models.PositiveIntegerField(default=0, verbose_name=_("Vues"))
     favorites_count = models.PositiveIntegerField(default=0, verbose_name=_("Favoris"))
     bookings_count = models.PositiveIntegerField(default=0, verbose_name=_("Réservations"))
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00, verbose_name=_("Note moyenne"))
+    reviews_count = models.PositiveIntegerField(default=0, verbose_name=_("Total avis"))
     
     # État
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, verbose_name=_("Statut"))
@@ -271,6 +273,15 @@ class MarketplaceService(TimeStampedModel, SoftDeleteModel, SEOModel):
     def increment_views(self):
         self.views_count += 1
         self.save(update_fields=['views_count'])
+
+    def update_rating(self):
+        """Recalcule la note moyenne à partir des avis."""
+        reviews = ServiceReview.objects.filter(service=self)
+        if reviews.exists():
+            avg = reviews.aggregate(models.Avg('rating'))['rating__avg']
+            self.average_rating = round(avg, 2)
+            self.reviews_count = reviews.count()
+            self.save(update_fields=['average_rating', 'reviews_count'])
 
     def get_effective_price(self):
         return self.discount_price if self.discount_price else self.base_price
@@ -364,6 +375,7 @@ class ServiceReview(TimeStampedModel):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         self.service.provider.update_rating()
+        self.service.update_rating()
 
 
 class ServiceBooking(TimeStampedModel):

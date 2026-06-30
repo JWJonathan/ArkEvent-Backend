@@ -90,12 +90,12 @@ class NotificationService:
     def notify_ticket_transfer(cls, sender, receiver, ticket):
         # Notify Receiver
         title_rec = "Nouveau billet reçu !"
-        body_rec = f"{sender.profile.full_name if sender.profile else sender.email} vous a envoyé un billet pour {ticket.ticket_type.event.title}."
+        body_rec = f"{sender.full_name if sender.full_name else sender.email} vous a envoyé un billet pour {ticket.ticket_type.event.title}."
         cls.send_notification(receiver, title_rec, body_rec, notification_type='push', event=ticket.ticket_type.event)
         
         # Notify Sender
         title_send = "Transfert de billet réussi"
-        body_send = f"Votre billet pour {ticket.ticket_type.event.title} a été transféré avec succès à {receiver.profile.full_name if receiver.profile else receiver.email}."
+        body_send = f"Votre billet pour {ticket.ticket_type.event.title} a été transféré avec succès à {receiver.full_name if receiver.full_name else receiver.email}."
         cls.send_notification(sender, title_send, body_send, notification_type='push', event=ticket.ticket_type.event)
 
     @classmethod
@@ -353,7 +353,7 @@ class NotificationService:
     @classmethod
     def notify_member_invite(cls, organization, invited_user, inviter):
         title = f"Invitation : {organization.name}"
-        body = f"{inviter.profile.full_name if hasattr(inviter, 'profile') and inviter.profile else inviter.email} vous a invité à rejoindre '{organization.name}'."
+        body = f"{inviter.full_name if hasattr(inviter, 'full_name') and inviter.full_name else inviter.email} vous a invité à rejoindre '{organization.name}'."
         cls.send_notification(invited_user, title, body, metadata={'organization_id': str(organization.id)})
 
     @classmethod
@@ -440,7 +440,7 @@ class NotificationService:
     # ⭐ Réseau social
     @classmethod
     def notify_social_interaction(cls, user, interaction_type, actor, event=None):
-        actor_name = actor.profile.full_name if hasattr(actor, 'profile') and actor.profile else actor.email
+        actor_name = actor.full_name if hasattr(actor, 'full_name') and actor.full_name else actor.email
         titles = {
             'follow': "Nouveau follower",
             'like': "Événement aimé",
@@ -461,7 +461,7 @@ class NotificationService:
 
     @classmethod
     def notify_messaging(cls, user, msg_type, sender, extra_data=None):
-        sender_name = sender.profile.full_name if hasattr(sender, 'profile') and sender.profile else sender.email
+        sender_name = sender.full_name if hasattr(sender, 'full_name') and sender.full_name else sender.email
         titles = {
             'private': "Nouveau message privé",
             'group': "Nouveau message de groupe",

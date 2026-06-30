@@ -228,7 +228,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Le token est requis'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            ticket = Ticket.objects.select_related('ticket_type__event', 'owner__profile').get(token=token)
+            ticket = Ticket.objects.select_related('ticket_type__event', 'owner').get(token=token)
         except Ticket.DoesNotExist:
             return Response({'success': False, 'message': 'Billet invalide ou introuvable'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -254,7 +254,7 @@ class TicketViewSet(viewsets.ModelViewSet):
                 'message': 'Ce billet a déjà été validé',
                 'data': {
                     'checkin_at': ticket.checkin_at,
-                    'owner': ticket.owner.profile.full_name if ticket.owner and hasattr(ticket.owner, 'profile') else 'Anonyme'
+                    'owner': ticket.owner.full_name if ticket.owner else 'Anonyme'
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -275,7 +275,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             'success': True,
             'message': 'Billet validé avec succès ! Accès autorisé.',
             'data': {
-                'owner': ticket.owner.profile.full_name if ticket.owner and hasattr(ticket.owner, 'profile') else 'Anonyme',
+                'owner': ticket.owner.full_name if ticket.owner else 'Anonyme',
                 'ticket_type': ticket.ticket_type.name,
                 'event': event.title,
                 'checkin_at': ticket.checkin_at
@@ -360,7 +360,7 @@ class TicketTransferViewSet(viewsets.ModelViewSet):
             NotificationService.send_notification(
                 transfer.to_user,
                 "Transfert de billet en attente",
-                f"{self.request.user.profile.full_name if self.request.user.profile else self.request.user.email} vous a envoyé un billet. Veuillez l'accepter.",
+                f"{self.request.user.full_name if self.request.user else self.request.user.email} vous a envoyé un billet. Veuillez l'accepter.",
                 notification_type='push',
                 event=transfer.ticket.ticket_type.event
             )

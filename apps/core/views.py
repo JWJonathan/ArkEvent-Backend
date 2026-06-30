@@ -263,12 +263,20 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         from apps.notifications.services import NotificationService
-        # On vérifie que l'utilisateur n'a pas déjà laissé un avis
-        event = serializer.validated_data['event']
-        if Review.objects.filter(user=self.request.user, event=event, deleted_at__isnull=True).exists():
+        from apps.events.models import Event
+        # Verify the user hasn't already reviewed this event
+        event = serializer.validated_data.get('event')
+        user = serializer.validated_data.get('user') or self.request.user
+        if not event:
+            event_id = serializer.validated_data.get('event_id') or self.request.data.get('event_id')
+            if event_id:
+                event = Event.objects.get(id=event_id)
+        if not event:
+            raise serializers.ValidationError('event is required')
+        if Review.objects.filter(user=user, event=event, deleted_at__isnull=True).exists():
             raise serializers.ValidationError("Vous avez déjà donné votre avis pour cet événement.")
-        review = serializer.save(user=self.request.user)
-        
+        review = serializer.save(user=user, event=event)
+
         # Notify organizer
         organizer = event.created_by
         NotificationService.notify_social_interaction(organizer, 'comment', self.request.user, event)
